@@ -98,7 +98,13 @@ public class Receiver {
 	public void receive() {
 	}
 }
-public class BlahTest {
+public class AbstractTest {
+  protected void setupTest() {
+	MockitoAnnotations.initMocks(this);
+	SwordInjector.inject(this);
+   }
+}
+public class BlahTest extends AbstractTest {
 	@Inject
 	protected Blah blah;
 	@Mock
@@ -106,9 +112,8 @@ public class BlahTest {
 
    @Before
    public void setUp() {
-		MockitoAnnotations.initMocks(this);
-		SwordInjector.inject(this);
-   }
+     super.setupTest();
+  }
 	@Test
 	public void testBlah() {
 		blah.callReceiver();
