@@ -119,7 +119,7 @@ public class BlahTest {
 
 Sword can see that @Mock Receiver receiver matches @Inject Receiver receiver and injects Blah's receiver with the mocked out version. This only works to one level.
 
-Download <a href="https://github.com/jake-stacktrace/Sword/tree/master/com.jake.sword/sword.jar">sword.jar</a> and add this to your build.gradle:
+Download <a href="https://github.com/jake-stacktrace/Sword/tree/master/com.jake.sword/sword.jar?raw=true">sword.jar</a> and add this to your build.gradle:
 
 Something like:
 <pre>
