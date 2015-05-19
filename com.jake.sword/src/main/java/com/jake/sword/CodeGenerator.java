@@ -152,7 +152,7 @@ public class CodeGenerator {
 				for(Element subFieldElement : subFieldElements) {
 					String subFieldVariableName = getVariableName(subFieldElement);
 					code += "      " + variableName + "." + fieldVariable + "." + subFieldVariableName + " = ";
-					Element mock = elementModel.getMock(fieldTypeElement, subFieldElement.asType());
+					Element mock = elementModel.getMock(fieldTypeElement, subFieldElement);
 					if (mock != null) {
 						code += variableName + "." + mock.getSimpleName() + ";\n";
 					} else {

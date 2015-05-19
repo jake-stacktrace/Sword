@@ -13,7 +13,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.type.MirroredTypeException;
-import javax.lang.model.type.TypeMirror;
 
 public class ElementModel {
 	private final List<InjectedClass> injectedClasses = new ArrayList<>();
@@ -179,13 +178,12 @@ public class ElementModel {
 		mocks.add(element);
 	}
 
-	public Element getMock(Element classElement, TypeMirror fieldType) {
+	public Element getMock(Element classElement, Element fieldElement) {
 		for (Element mockElement : mocks) {
 			// if the current field's type matches the mock type
-			if (fieldType.equals(mockElement.asType())) {
+			if (fieldElement.asType().equals(mockElement.asType()) && 
+					fieldElement.getSimpleName().equals(mockElement.getSimpleName())) {
 				for (InjectedClass injectedClass : injectedClasses) {
-//					System.out.println("Comparing " + injectedClass.getFieldElement() + " to " + classElement + " and "
-//							+ injectedClass.getClassElement() + " to " + mockElement.getEnclosingElement());
 					if (injectedClass.getFieldElement() != null) {
 						Element fieldTypeElement = elementHelper.asElement(injectedClass.getFieldElement().asType());
 						// if test class (BlahTest) matches where the real
