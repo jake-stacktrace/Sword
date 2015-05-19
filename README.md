@@ -15,11 +15,13 @@ Blah blah = SwordInjector.get(Blah.class);
 
 In order to create Foo, Foo must have members or a constructor marked with @Inject.
 
+<pre>
 class Foo {
   @Inject
   public Foo() {
   }
 }
+</pre>
 
 Injected members must not be private or final. If that is desired, use injected constructors.
 
