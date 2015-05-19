@@ -1,0 +1,5 @@
+<factorypath>
+    <factorypathentry kind="WKSPJAR" id="/Example/sword.jar" enabled="true" runInBatchMode="true"/>
+    <factorypathentry kind="WKSPJAR" id="/Example/javax-inject.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="WKSPJAR" id="/Example/mockito-all-1.9.5.jar" enabled="true" runInBatchMode="false"/>
+</factorypath>
