@@ -126,8 +126,8 @@ Something like:
 apt files('sword.jar')
 </pre>
 
-Eclipse Support:
+Eclipse Support:<br />
 Since Eclipse has incremental compilation, it fools Sword. You will have to clean your project files a lot to use it. This will be addressed in a later release.
 
-Supported Tags:
+Supported Annotations:<br />
   @Inject, @Provides, @Named, @Qualifier, @Singleton, @Mock
