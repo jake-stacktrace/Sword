@@ -8,10 +8,7 @@ class Blah {
 
 Blah blah = new Blah();
 SwordInjector.inject(blah);
-// blah.foo now has a new instance of Foo
-</pre>
-Also supported:
-<pre>
+// blah.foo now has a new instance of Foo. Or you can just do:
 Blah blah = SwordInjector.get(Blah.class);
 </pre>
 In order to create Foo, Foo must have members or a constructor marked with @Inject.
@@ -136,7 +133,9 @@ public class BlahTest extends AbstractTest {
 
 Sword can see that @Mock Receiver receiver matches @Inject Receiver receiver and injects Blah's receiver with the mocked out version. This only works to one level.
 
-Notice how Sword was able to inject from the subclass. It was given an AbstractTest, and figured out it was an instance of BlahTest, even though AbstractTest is not abstract. Both methods SwordInjector.inject(AbstractTest) and SwordInjector.inject(BlahTest) methods are generated. In Android, you can do your injection in an Activity base class.
+Notice how Sword was able to inject from the subclass. It was given an AbstractTest, and figured out it was an instance of BlahTest, even though AbstractTest is not abstract. Both methods SwordInjector.inject(AbstractTest) and SwordInjector.inject(BlahTest) methods are generated. 
+
+In Android, you can do your injection in an Activity base class.
 
 Download <a href="https://github.com/jake-stacktrace/Sword/blob/master/com.jake.sword/sword.jar?raw=true">sword.jar</a> and add this to your build.gradle:
 
