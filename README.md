@@ -24,7 +24,7 @@ class Foo {
 }
 </pre>
 
-Injected members must not be private or final. If that is desired, use injected constructors.
+Injected members must not be private or final. If they are Sword raises an error.
 Instances can also be provided:
 
 <pre>
@@ -35,6 +35,12 @@ class FooModule {
   }
 }
 </pre>
+
+Or you can bind manually. This teaches Sword to create a Foo whenever it needs IFoo:
+@Bind(from=IFoo.class,to=Foo.class)
+public class Binder {
+}
+
 
 @Named is supported too:
 <pre>
@@ -90,6 +96,10 @@ Sword also knows about mockito annotations:
 public class Blah {
 	@Inject
 	protected Receiver receiver;
+	
+	public void callReceiver() {
+		receiver.receive();
+	}
 }
 public class Receiver {
 	@Inject
@@ -126,13 +136,13 @@ Sword can see that @Mock Receiver receiver matches @Inject Receiver receiver and
 
 Download <a href="https://github.com/jake-stacktrace/Sword/blob/master/com.jake.sword/sword.jar?raw=true">sword.jar</a> and add this to your build.gradle:
 
-Something like:
 <pre>
 apt files('sword.jar')
 </pre>
+
 
 Eclipse Support:<br />
 Since Eclipse has incremental compilation, it fools Sword. You will have to clean your project files a lot to use it. This will be addressed in a later release.
 
 Supported Annotations:<br />
-  @Inject, @Provides, @Named, @Qualifier, @Singleton, @Mock
+  @Inject, @Provides, @Named, @Qualifier, @Singleton, @Mock, @Bind
