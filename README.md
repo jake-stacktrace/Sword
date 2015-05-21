@@ -37,10 +37,11 @@ class FooModule {
 </pre>
 
 Or you can bind manually. This teaches Sword to create a Foo whenever it needs IFoo:
+<pre>
 @Bind(from=IFoo.class,to=Foo.class)
 public class Binder {
 }
-
+</pre>
 
 @Named is supported too:
 <pre>
