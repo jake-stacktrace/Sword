@@ -1,5 +1,5 @@
 # Sword
-Sword is a compile-time dependency injection framework. 
+Sword is a statically typed compile-time dependency injection framework for Android and Java 
 <pre>
 class Blah {
    @Inject
@@ -43,6 +43,7 @@ public class Binder {
 }
 </pre>
 
+If an instance is bound from more than one place, Sword raises an error. For example if it could get IFoo from more than one of @Bind, @Provides and an @Inject constructor, that's an error. 
 @Named is supported too:
 <pre>
 class Blah {
@@ -92,7 +93,7 @@ class SpeedModule {
 	public String getSlow() { return "slow"; }
 }
 </pre>
-Sword also knows about mockito annotations:
+Sword also knows about mockito annotations to help with testing:
 <pre>
 public class Blah {
 	@Inject
@@ -134,6 +135,8 @@ public class BlahTest extends AbstractTest {
 </pre>
 
 Sword can see that @Mock Receiver receiver matches @Inject Receiver receiver and injects Blah's receiver with the mocked out version. This only works to one level.
+
+Notice how Sword was able to inject from the subclass. It was given an AbstractTest, and figured out it was an instance of BlahTest, even though AbstractTest is not abstract. Both methods SwordInjector.inject(AbstractTest) and SwordInjector.inject(BlahTest) methods are generated. In Android, you can do your injection in an Activity base class.
 
 Download <a href="https://github.com/jake-stacktrace/Sword/blob/master/com.jake.sword/sword.jar?raw=true">sword.jar</a> and add this to your build.gradle:
 
