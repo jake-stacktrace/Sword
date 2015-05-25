@@ -137,7 +137,7 @@ Notice how Sword was able to inject from the subclass. It was given an AbstractT
 
 In Android, you can do your injection in an Activity base class.
 
-Download <a href="https://github.com/jake-stacktrace/Sword/blob/master/com.jake.sword/sword.jar?raw=true">sword.jar</a> and add this to your build.gradle:
+Download <a href="https://github.com/jake-stacktrace/Sword/blob/master/Example/sword.jar?raw=true">sword.jar</a> and add this to your build.gradle:
 
 <pre>
 apt files('sword.jar')
