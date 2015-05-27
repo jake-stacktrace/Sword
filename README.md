@@ -21,9 +21,12 @@ class Blah {
    @Inject
    protected Foo foo;
 }
-
+</pre>
+SwordInjector supports just 2 methods. inject() and get(Class)
+<pre>
 Blah blah = new Blah();
 SwordInjector.inject(blah);
+
 // blah.foo now has a new instance of Foo. Or you can just do:
 Blah blah = SwordInjector.get(Blah.class);
 </pre>
