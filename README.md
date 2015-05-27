@@ -59,7 +59,10 @@ public class Binder {
 }
 </pre>
 
-If an instance is bound from more than one place, Sword raises an error. For example if it could get IFoo from more than one of @Bind, @Provides and an @Inject constructor, that's an error. 
+If an instance is bound from more than one place, Sword raises an error. 
+
+Or if a class or interface is bound from more than one of @Bind, @Provides or an @Inject constructor, that's an error. 
+
 @Named is supported too:
 <pre>
 class Blah {
