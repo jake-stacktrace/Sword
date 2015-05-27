@@ -114,7 +114,7 @@ class SpeedModule {
 </pre>
 Sword also knows about mockito annotations to help with testing:
 <pre>
-public class Blah {
+public class Caller {
 	@Inject
 	protected Receiver receiver;
 	
@@ -129,15 +129,15 @@ public class Receiver {
 	public void receive() {
 	}
 }
-public class AbstractTest {
+public class BaseTest {
   protected void setupTest() {
 	MockitoAnnotations.initMocks(this);
 	SwordInjector.inject(this);
    }
 }
-public class BlahTest extends AbstractTest {
+public class CallerTest extends BaseTest {
 	@Inject
-	protected Blah blah;
+	protected Caller caller;
 	@Mock
 	protected Receiver receiver;
 
@@ -146,16 +146,16 @@ public class BlahTest extends AbstractTest {
      super.setupTest();
   }
 	@Test
-	public void testBlah() {
-		blah.callReceiver();
+	public void testCallerCallsReceiver() {
+		caller.callReceiver();
 		verify(receiver).receive();
    }
 }
 </pre>
 
-Sword can see that @Mock Receiver receiver matches @Inject Receiver receiver and injects Blah's receiver with the mocked out version. This only works to one level.
+Sword can see that @Mock Receiver receiver matches @Inject Receiver receiver and injects Caller's receiver with the mocked out version. This only works to one level.
 
-Notice how Sword was able to inject from the subclass. It was given an AbstractTest, and figured out it was an instance of BlahTest, even though AbstractTest is not abstract. Both methods SwordInjector.inject(AbstractTest) and SwordInjector.inject(BlahTest) methods are generated. 
+Notice how Sword was able to inject from the subclass. It was given a BaseTest, and figured out it was an instance of CallerTest, even though BaseTest is not abstract. Both methods SwordInjector.inject(BaseTest) and SwordInjector.inject(CallerTest) methods are generated.
 
 In Android, you can do your injection in an Activity base class.
 
