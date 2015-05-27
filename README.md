@@ -6,6 +6,9 @@ Installing Sword
 Add this to your build.gradle:
 
 <pre>
+repositories {
+	jcenter()
+}
 dependencies {
     apt 'com.jake:sword:0.2.0'
 }
