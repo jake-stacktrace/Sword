@@ -1,5 +1,18 @@
 # Sword
 Sword is a statically typed compile-time dependency injection framework for Android and Java 
+
+Installing Sword
+
+Add this to your build.gradle:
+
+<pre>
+dependencies {
+    apt 'com.jake:sword:0.2.0'
+}
+</pre>
+
+In order to show you how Sword works, let's start with a simple example.
+
 <pre>
 class Blah {
    @Inject
@@ -136,12 +149,6 @@ Sword can see that @Mock Receiver receiver matches @Inject Receiver receiver and
 Notice how Sword was able to inject from the subclass. It was given an AbstractTest, and figured out it was an instance of BlahTest, even though AbstractTest is not abstract. Both methods SwordInjector.inject(AbstractTest) and SwordInjector.inject(BlahTest) methods are generated. 
 
 In Android, you can do your injection in an Activity base class.
-
-Download <a href="https://github.com/jake-stacktrace/Sword/blob/master/Example/sword.jar?raw=true">sword.jar</a> and add this to your build.gradle:
-
-<pre>
-apt files('sword.jar')
-</pre>
 
 
 Eclipse Support:<br />
