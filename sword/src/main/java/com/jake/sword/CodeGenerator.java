@@ -6,7 +6,6 @@ import java.util.List;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.inject.Named;
 import javax.inject.Singleton;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -16,7 +15,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
 
 public class CodeGenerator {
-	private final static String PACKAGE_INJECTOR_NAME = "Package$$Sword$$Injector";
+	private final static String PACKAGE_INJECTOR_NAME = "PackageSwordInjector";
 	private final ProcessingEnvironment processingEnv;
 	private final ElementModel elementModel;
 	private final ElementHelper elementHelper;
@@ -98,14 +97,14 @@ public class CodeGenerator {
 			if (classElement.getAnnotation(Singleton.class) != null) {
 				variableName += "Instance";
 				code += "  private static " + classElement + " " + getVariableName(classElement) + "Instance = "
-						+ construct(classElement, getProvidedMethod(classElement)) + ";\n";
+						+ construct(classElement, elementModel.getProvidedMethod(classElement)) + ";\n";
 				code += "static { " + PACKAGE_INJECTOR_NAME + ".inject(" + variableName + "); }\n";
 				isSingleton = true;
 			}
 			if (!elementHelper.isAbstract(classElement)) {
 				code += "  public static " + className + " get" + classElement.getSimpleName() + "() {\n";
 				if (!isSingleton) {
-					code += "      " + className + " " + variableName + " = " + construct(classElement, getProvidedMethod(classElement))
+					code += "      " + className + " " + variableName + " = " + construct(classElement, elementModel.getProvidedMethod(classElement))
 							+ ";\n";
 					code += "      " + PACKAGE_INJECTOR_NAME + ".inject(" + variableName + ");\n";
 				}
@@ -170,14 +169,9 @@ public class CodeGenerator {
 		return code;
 	}
 
-	private ExecutableElement getProvidedMethod(Element fieldElement) {
-		return elementModel.getProvidedClass(elementHelper.asElement(fieldElement.asType()), fieldElement.getAnnotation(Named.class),
-				elementModel.getQualifiers(fieldElement));
-	}
-
 	private String createObject(TypeMirror type, Element referringElement) {
 		if (referringElement.asType().getKind().isPrimitive()) {
-			ExecutableElement providedMethod = getProvidedMethod(referringElement);
+			ExecutableElement providedMethod = elementModel.getProvidedMethod(referringElement);
 			if (providedMethod != null) {
 				Element moduleClassElement = providedMethod.getEnclosingElement();
 				return construct(moduleClassElement, referringElement) + "." + providedMethod.getSimpleName().toString() + "()";
@@ -187,7 +181,7 @@ public class CodeGenerator {
 		}
 		Element classElement = elementHelper.asElement(type);
 		PackageElement packageElement = elementHelper.getPackageElement(classElement);
-		ExecutableElement providedMethod = getProvidedMethod(referringElement);
+		ExecutableElement providedMethod = elementModel.getProvidedMethod(referringElement);
 		if (elementModel.containsClassElement(packageElement, classElement)) {
 			return createFromGetterOnInjector(classElement);
 		} else if (providedMethod != null) {
@@ -207,7 +201,7 @@ public class CodeGenerator {
 			if (fieldElements.isEmpty()) {
 				if (referringElement == null) {
 					elementHelper.error(classElement, "Missing @Inject tags on target class " + classElement);
-				} else if (getProvidedMethod(referringElement) == null) {
+				} else if (elementModel.getProvidedMethod(referringElement) == null) {
 					elementHelper.error(referringElement, "Missing @Inject tags on target class " + classElement);
 				}
 			}

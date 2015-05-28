@@ -1,0 +1,87 @@
+plugins {
+    id "com.jfrog.bintray" version "1.1"
+}
+
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'maven-publish'
+
+// This is the library version used when deploying the artifact
+version = "0.2.0"
+group 'com.jake'
+
+repositories {
+    jcenter()
+
+    flatDir {
+       dirs 'libs'
+    }
+}
+
+dependencies {
+    compile 'javax.inject:javax.inject:1'
+    compile 'javax.annotation:javax.annotation-api:1.2'
+    //compile name: 'tools'
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from 'build/docs/javadoc'
+}
+
+artifacts {
+        archives sourcesJar, javadocJar
+    }
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
+
+            artifactId bintray.pkg.name
+
+            pom.withXml {
+                def root = asNode()
+                root.children().last() + pomConfig
+            }
+        }
+    }
+}
+
+bintray {
+	user ='jake-stacktrace'
+	key ='ed1398b0a5c826fe98cfbbcf82d61bb9bbe6f857'
+
+    configurations = ['archives']
+    
+    pkg {
+        repo = 'maven'
+	name = 'sword'
+  	licenses = ["Apache-2.0"]
+    	publish = true 
+    }
+}
+
+ext.pomConfig = {
+    licenses {
+	    license {
+                name 'The Apache Software License, Version 2.0'
+                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                distribution 'repo'
+            }
+    }
+    developers {
+        developer {
+            id "jake-stacktrace"
+            name "Jake McCormick"
+            email "jake.stacktrace@gmail.com"
+        }
+    }
+}

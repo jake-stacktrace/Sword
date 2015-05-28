@@ -1,18 +1,30 @@
 package com.jake.sword;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import javax.inject.Named;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 
 public class Provider {
 	private final Element classElement;
-	private final String name;
-	private final List<Element> qualifiers;
+	private final List<Element> qualifiers = new ArrayList<>();
+	private String name;
 
-	public Provider(Element classElement, String name, List<Element> qualifiers) {
+	public Provider(Element classElement, Element fieldElement, ElementModel elementModel) {
 		this.classElement = classElement;
-		this.name = name;
-		this.qualifiers = qualifiers;
+		Named namedAnnotation = fieldElement.getAnnotation(Named.class);
+		this.name = namedAnnotation == null ? null : namedAnnotation.value();
+		for (Element qualifier : elementModel.getQualifiers()) {
+			List<? extends AnnotationMirror> annotationMirrors = fieldElement.getAnnotationMirrors();
+			for (AnnotationMirror annotationMirror : annotationMirrors) {
+				Element annotationElement = annotationMirror.getAnnotationType().asElement();
+				if (qualifier.equals(annotationElement)) {
+					qualifiers.add(annotationElement);
+				}
+			}
+		}
 	}
 	
 	public Element getClassElement() {
@@ -26,7 +38,7 @@ public class Provider {
 	public List<Element> getQualifiers() {
 		return qualifiers;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -66,6 +78,6 @@ public class Provider {
 
 	@Override
 	public String toString() {
-		return classElement + " " + name + " " + qualifiers;
+		return classElement + " " + getName() + " " + getQualifiers();
 	}
 }

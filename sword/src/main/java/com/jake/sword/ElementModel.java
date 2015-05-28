@@ -7,8 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Named;
-import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
@@ -81,10 +79,8 @@ public class ElementModel {
 		addClassWithZeroFields(classElement);
 	}
 
-	public void addProvides(Element returnElement, ExecutableElement providesMethodElement, List<Element> qualifiers) {
-		Named namedAnnotation = providesMethodElement.getAnnotation(Named.class);
-		String nameValue = namedAnnotation == null ? null : namedAnnotation.value();
-		Provider classAndName = new Provider(returnElement, nameValue, qualifiers);
+	public void addProvides(Element returnElement, ExecutableElement providesMethodElement) {
+		Provider classAndName = new Provider(returnElement, providesMethodElement, this);
 		if (provides.containsKey(classAndName)) {
 			elementHelper.error(providesMethodElement,
 					"Duplicate Provides, cannot figure out which Injection to match. Use @Named or a custom Qualifier");
@@ -115,9 +111,8 @@ public class ElementModel {
 		injectedClasses.add(new InjectedClass(packageElement, classElement, null));
 	}
 
-	public ExecutableElement getProvidedClass(Element classElement, Named namedAnnotation, List<Element> providedQualifiers) {
-		String nameValue = namedAnnotation == null ? null : namedAnnotation.value();
-		return provides.get(new Provider(classElement, nameValue, providedQualifiers));
+	private ExecutableElement getProvidedClass(Element classElement, Element fieldElement) {
+		return provides.get(new Provider(classElement, fieldElement, this));
 	}
 
 	public Set<Element> getClassElements() {
@@ -138,10 +133,17 @@ public class ElementModel {
 			bind.from();
 		} catch (MirroredTypeException e) {
 			Element fromElement = elementHelper.asElement(e.getTypeMirror());
+			if (provides.containsKey(new Provider(fromElement, element, this))) {
+				elementHelper.error(element,
+						"Bind conflicts with Provides, cannot figure out which Injection to match. Use @Named or a custom Qualifier");
+			}
 			try {
 				bind.to();
 			} catch (MirroredTypeException e2) {
 				Element toElement = elementHelper.asElement(e2.getTypeMirror());
+				if(!constructors.containsKey(toElement) && !provides.containsKey(new Provider(toElement, element, this))) {
+					elementHelper.error(element, "Bind to class with missing @Provides or @Inject constructor");
+				}
 				bindings.put(fromElement, toElement);
 			}
 		}
@@ -149,6 +151,10 @@ public class ElementModel {
 
 	public void addQualifier(Element element) {
 		qualifiers.add(element);
+	}
+	
+	public List<Element> getQualifiers() {
+		return qualifiers;
 	}
 
 	public Element rebind(Element classElement) {
@@ -159,21 +165,6 @@ public class ElementModel {
 		return classElement;
 	}
 
-	public List<Element> getQualifiers(Element element) {
-		List<Element> annotations = new ArrayList<>();
-		for (Element qualifier : qualifiers) {
-			List<? extends AnnotationMirror> annotationMirrors = element.getAnnotationMirrors();
-			for (AnnotationMirror annotationMirror : annotationMirrors) {
-				Element annotationElement = annotationMirror.getAnnotationType().asElement();
-				if (qualifier.equals(annotationElement)) {
-					annotations.add(annotationElement);
-				}
-			}
-		}
-		return annotations;
-
-	}
-
 	public void addMock(Element element) {
 		mocks.add(element);
 	}
@@ -181,8 +172,7 @@ public class ElementModel {
 	public Element getMock(Element classElement, Element fieldElement) {
 		for (Element mockElement : mocks) {
 			// if the current field's type matches the mock type
-			if (fieldElement.asType().equals(mockElement.asType()) && 
-					fieldElement.getSimpleName().equals(mockElement.getSimpleName())) {
+			if (fieldElement.asType().equals(mockElement.asType()) && fieldElement.getSimpleName().equals(mockElement.getSimpleName())) {
 				for (InjectedClass injectedClass : injectedClasses) {
 					if (injectedClass.getFieldElement() != null) {
 						Element fieldTypeElement = elementHelper.asElement(injectedClass.getFieldElement().asType());
@@ -204,12 +194,16 @@ public class ElementModel {
 	}
 
 	public boolean isMockClass(Element classElement) {
-		for(Element mock : mocks) {
-			System.out.println("Comparing " + classElement + " to " + mock.getEnclosingElement());
-			if(mock.getEnclosingElement().equals(classElement)) {
+		for (Element mock : mocks) {
+			if (mock.getEnclosingElement().equals(classElement)) {
 				return true;
 			}
 		}
 		return false;
 	}
+
+	public ExecutableElement getProvidedMethod(Element fieldElement) {
+		return getProvidedClass(elementHelper.asElement(fieldElement.asType()), fieldElement);
+	}
+
 }

@@ -13,7 +13,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 
 public class ElementProcessor {
-
 	private ElementHelper elementHelper;
 	private ElementModel elementModel;
 
@@ -56,9 +55,13 @@ public class ElementProcessor {
 			elementModel.addQualifier(element);
 		}
 		for (Element element : env.getElementsAnnotatedWith(Provides.class)) {
-			ExecutableElement methodElement = (ExecutableElement) element;
-			Element returnElement = elementHelper.asElement(methodElement.getReturnType());
-			elementModel.addProvides(returnElement, methodElement, elementModel.getQualifiers(methodElement));
+			addProvidesElement(element);
+		}
+		try {
+			for (Element element : env.getElementsAnnotatedWith((Class<? extends Annotation>) Class.forName("dagger.Provides"))) {
+				addProvidesElement(element);
+			}
+		} catch (ClassNotFoundException e) {
 		}
 		for (Element element : env.getElementsAnnotatedWith(Singleton.class)) {
 			elementModel.addSingleton(element);
@@ -66,5 +69,11 @@ public class ElementProcessor {
 		for (Element element : env.getElementsAnnotatedWith(Bind.class)) {
 			elementModel.addBind(element);
 		}
+	}
+
+	private void addProvidesElement(Element element) {
+		ExecutableElement methodElement = (ExecutableElement) element;
+		Element returnElement = elementHelper.asElement(methodElement.getReturnType());
+		elementModel.addProvides(returnElement, methodElement);
 	}
 }
