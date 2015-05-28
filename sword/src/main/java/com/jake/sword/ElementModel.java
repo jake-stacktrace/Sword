@@ -111,7 +111,7 @@ public class ElementModel {
 		injectedClasses.add(new InjectedClass(packageElement, classElement, null));
 	}
 
-	private ExecutableElement getProvidedClass(Element classElement, Element fieldElement) {
+	private ExecutableElement getProvidesMethod(Element classElement, Element fieldElement) {
 		return provides.get(new Provider(classElement, fieldElement, this));
 	}
 
@@ -133,9 +133,11 @@ public class ElementModel {
 			bind.from();
 		} catch (MirroredTypeException e) {
 			Element fromElement = elementHelper.asElement(e.getTypeMirror());
-			if (provides.containsKey(new Provider(fromElement, element, this))) {
-				elementHelper.error(element,
-						"Bind conflicts with Provides, cannot figure out which Injection to match. Use @Named or a custom Qualifier");
+			ExecutableElement providesMethod = getProvidesMethod(fromElement, element);
+			if (providesMethod != null) {
+				elementHelper.error(providesMethod, "Bind conflicts with Provides, cannot figure out which Injection to match.");
+				elementHelper.error(element, "Bind conflicts with Provides, cannot figure out which Injection to match.");
+				return;
 			}
 			try {
 				bind.to();
@@ -143,6 +145,7 @@ public class ElementModel {
 				Element toElement = elementHelper.asElement(e2.getTypeMirror());
 				if(!constructors.containsKey(toElement) && !provides.containsKey(new Provider(toElement, element, this))) {
 					elementHelper.error(element, "Bind to class with missing @Provides or @Inject constructor");
+					return;
 				}
 				bindings.put(fromElement, toElement);
 			}
@@ -203,7 +206,7 @@ public class ElementModel {
 	}
 
 	public ExecutableElement getProvidedMethod(Element fieldElement) {
-		return getProvidedClass(elementHelper.asElement(fieldElement.asType()), fieldElement);
+		return getProvidesMethod(elementHelper.asElement(fieldElement.asType()), fieldElement);
 	}
 
 }
