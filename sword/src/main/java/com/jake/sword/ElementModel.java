@@ -10,7 +10,9 @@ import java.util.Set;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.MirroredTypeException;
+import javax.lang.model.type.TypeMirror;
 
 public class ElementModel {
 	private final List<InjectedClass> injectedClasses = new ArrayList<>();
@@ -26,7 +28,7 @@ public class ElementModel {
 	}
 
 	public void addField(PackageElement packageElement, Element fieldElement) {
-		injectedClasses.add(new InjectedClass(packageElement, fieldElement.getEnclosingElement(), fieldElement));
+		injectedClasses.add(new InjectedClass(packageElement, (TypeElement) fieldElement.getEnclosingElement(), fieldElement));
 	}
 
 	public Set<PackageElement> getPackageElements() {
@@ -37,8 +39,8 @@ public class ElementModel {
 		return packageElements;
 	}
 
-	public Set<Element> getClassElements(PackageElement packageElement) {
-		Set<Element> classElements = new HashSet<>();
+	public Set<TypeElement> getClassElements(PackageElement packageElement) {
+		Set<TypeElement> classElements = new HashSet<>();
 		for (InjectedClass injectedClass : injectedClasses) {
 			if (injectedClass.getPackageElement().equals(packageElement)) {
 				classElements.add(injectedClass.getClassElement());
@@ -70,7 +72,7 @@ public class ElementModel {
 	}
 
 	public void addConstructor(PackageElement packageElement, ExecutableElement constructorElement) {
-		Element classElement = constructorElement.getEnclosingElement();
+		TypeElement classElement = (TypeElement) constructorElement.getEnclosingElement();
 		if (constructors.containsKey(classElement)) {
 			elementHelper.error(constructorElement, "Only one constructor can have @Inject tag");
 			return;
@@ -102,11 +104,11 @@ public class ElementModel {
 		return false;
 	}
 
-	public void addSingleton(Element singletonElement) {
+	public void addSingleton(TypeElement singletonElement) {
 		addClassWithZeroFields(singletonElement);
 	}
 
-	private void addClassWithZeroFields(Element classElement) {
+	private void addClassWithZeroFields(TypeElement classElement) {
 		PackageElement packageElement = elementHelper.getPackageElement(classElement);
 		injectedClasses.add(new InjectedClass(packageElement, classElement, null));
 	}
@@ -115,12 +117,41 @@ public class ElementModel {
 		return provides.get(new Provider(classElement, fieldElement, this));
 	}
 
-	public Set<Element> getClassElements() {
-		Set<Element> classElements = new HashSet<>();
+	public Set<TypeElement> getClassElements() {
+		Set<TypeElement> classElements = new HashSet<>();
 		for (PackageElement packageElement : getPackageElements()) {
 			classElements.addAll(getClassElements(packageElement));
 		}
 		return classElements;
+	}
+
+	public Map<String, List<Element>> getSuperClasses() {
+		Set<TypeElement> classElements = new HashSet<>();
+		for (Element mockElement : mocks) {
+			TypeElement classElement = (TypeElement) mockElement.getEnclosingElement();
+			classElements.add(classElement);
+		}
+		classElements.addAll(getClassElements());
+		Map<String, List<Element>> superClasses = new HashMap<>();
+		gatherSuperClasses(superClasses, classElements);
+		return superClasses;
+	}
+
+	private void gatherSuperClasses(Map<String, List<Element>> superClasses, Set<TypeElement> elements) {
+		for (TypeElement classElement : elements) {
+			TypeMirror superClassType = classElement.getSuperclass();
+			if (!elements.contains(elementHelper.asElement(superClassType))) {
+				String strSuperClass = superClassType.toString();
+				if (!strSuperClass.equals("java.lang.Object")) {
+					List<Element> classElements = superClasses.get(strSuperClass);
+					if (classElements == null) {
+						classElements = new ArrayList<>();
+						superClasses.put(strSuperClass, classElements);
+					}
+					classElements.add(classElement);
+				}
+			}
+		}
 	}
 
 	public ExecutableElement getInjectedConstructor(Element classElement) {
@@ -143,7 +174,7 @@ public class ElementModel {
 				bind.to();
 			} catch (MirroredTypeException e2) {
 				Element toElement = elementHelper.asElement(e2.getTypeMirror());
-				if(!constructors.containsKey(toElement) && !provides.containsKey(new Provider(toElement, element, this))) {
+				if (!constructors.containsKey(toElement) && !provides.containsKey(new Provider(toElement, element, this))) {
 					elementHelper.error(element, "Bind to class with missing @Provides or @Inject constructor");
 					return;
 				}
@@ -155,7 +186,7 @@ public class ElementModel {
 	public void addQualifier(Element element) {
 		qualifiers.add(element);
 	}
-	
+
 	public List<Element> getQualifiers() {
 		return qualifiers;
 	}
@@ -196,7 +227,7 @@ public class ElementModel {
 		return null;
 	}
 
-	public boolean isMockClass(Element classElement) {
+	public boolean isTestClass(Element classElement) {
 		for (Element mock : mocks) {
 			if (mock.getEnclosingElement().equals(classElement)) {
 				return true;

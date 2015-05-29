@@ -11,6 +11,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
 
 public class ElementProcessor {
 	private ElementHelper elementHelper;
@@ -64,7 +65,7 @@ public class ElementProcessor {
 		} catch (ClassNotFoundException e) {
 		}
 		for (Element element : env.getElementsAnnotatedWith(Singleton.class)) {
-			elementModel.addSingleton(element);
+			elementModel.addSingleton((TypeElement)element);
 		}
 		for (Element element : env.getElementsAnnotatedWith(Bind.class)) {
 			elementModel.addBind(element);

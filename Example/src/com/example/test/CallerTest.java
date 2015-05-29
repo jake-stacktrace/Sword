@@ -11,20 +11,20 @@ import org.mockito.MockitoAnnotations;
 
 import com.jake.sword.SwordInjector;
 
-public class BlahTest {
+public class CallerTest {
 	@Inject
-	protected Blah blah;
+	protected Caller caller;
 	@Mock
 	protected Receiver receiver;
 	
 	@Test
-	public void testBlah() {
+	public void testCaller() {
 		MockitoAnnotations.initMocks(this);
 		SwordInjector.inject(this);
-		blah.callReceiver();
+		caller.callReceiver();
 		verify(receiver).receive();
-		assertTrue(blah.receiver.getClass().toString().contains("Mock"));
+		assertTrue(caller.receiver.getClass().toString().contains("Mock"));
 		// injections only get replaced 1 level deep not 2
-		assertFalse(blah.other.receiver.getClass().toString().contains("Mock"));
+		assertFalse(caller.other.receiver.getClass().toString().contains("Mock"));
 	}
 }

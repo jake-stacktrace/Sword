@@ -3,6 +3,7 @@ package com.jake.sword;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -46,6 +47,19 @@ public class CodeGenerator {
 			code += "  public static void inject(" + classElement + " " + variableName + ") {\n";
 			code += "        " + elementHelper.getPackageName(classElement) + "." + PACKAGE_INJECTOR_NAME + ".inject(" + variableName
 					+ ");\n";
+			code += "    }\n";
+		}
+		Map<String, List<Element>> superClasses = elementModel.getSuperClasses();
+		for(String superClassName : superClasses.keySet()) {
+			List<Element> classElements = superClasses.get(superClassName);
+			String variableName = getVariableName(superClassName);
+			code += "  public static void inject(" + superClassName + " " + variableName + ") {\n";
+			for(Element classElement : classElements) {
+				code += "        if(" + variableName + " instanceof " + classElement.toString() + ") {\n";
+				code += "          " + elementHelper.getPackageName(classElement) + "." + PACKAGE_INJECTOR_NAME + 
+						".inject((" + classElement + ")" + variableName + ");\n";
+				code += "        }\n";
+			}
 			code += "    }\n";
 		}
 		code += "  @SuppressWarnings(\"unchecked\")\n";
@@ -141,7 +155,7 @@ public class CodeGenerator {
 	private String populateMemberFields(PackageElement packageElement, Element classElement, String variableName) {
 		String code = "";
 		List<Element> fieldElements = elementModel.getFieldElements(packageElement, classElement);
-		if (elementModel.isMockClass(classElement)) {
+		if (elementModel.isTestClass(classElement)) {
 			for (Element fieldElement : fieldElements) {
 				String fieldVariable = getVariableName(fieldElement);
 				code += "      " + variableName + "." + fieldVariable + " = ";
@@ -225,6 +239,13 @@ public class CodeGenerator {
 
 	private String getVariableName(Element classElement) {
 		String name = classElement.getSimpleName().toString();
+		return getVariableName(name);
+	}
+
+	private String getVariableName(String name) {
+		if(name.contains(".")) {
+			name = name.substring(name.lastIndexOf(".")+1);
+		}
 		return Character.toLowerCase(name.charAt(0)) + name.substring(1);
 	}
 }

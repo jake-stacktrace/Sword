@@ -2,13 +2,14 @@ package com.jake.sword;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
 
 public class InjectedClass {
 	private final Element fieldElement;
 	private final PackageElement packageElement;
-	private final Element classElement;
+	private final TypeElement classElement;
 
-	public InjectedClass(PackageElement packageElement, Element classElement, Element fieldElement) {
+	public InjectedClass(PackageElement packageElement, TypeElement classElement, Element fieldElement) {
 		this.packageElement = packageElement;
 		this.classElement = classElement;
 		this.fieldElement = fieldElement;
@@ -22,7 +23,7 @@ public class InjectedClass {
 		return packageElement;
 	}
 
-	public Element getClassElement() {
+	public TypeElement getClassElement() {
 		return classElement;
 	}
 }

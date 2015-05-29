@@ -2,7 +2,7 @@ package com.example.test;
 
 import javax.inject.Inject;
 
-public class Blah {
+public class Caller {
 	@Inject
 	protected Receiver receiver;
 	@Inject
