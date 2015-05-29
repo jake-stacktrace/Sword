@@ -1,0 +1,7 @@
+Example/bin
+Example/.apt_generated
+.gradle
+sword/bin
+sword/build
+sword/local.properties
+com.jake.sword/bin
