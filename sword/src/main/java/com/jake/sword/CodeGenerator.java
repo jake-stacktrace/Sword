@@ -207,7 +207,7 @@ public class CodeGenerator {
 	}
 
 	private String construct(Element classElement, Element referringElement) {
-		classElement = elementModel.rebind(classElement);
+		classElement = elementModel.rebind(new Provider(classElement, referringElement, elementModel));
 		ExecutableElement constructorElement = elementModel.getInjectedConstructor(classElement);
 		if (constructorElement == null) {
 			PackageElement packageElement = elementHelper.getPackageElement(classElement);

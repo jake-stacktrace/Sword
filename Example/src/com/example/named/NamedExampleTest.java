@@ -1,6 +1,6 @@
 package com.example.named;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import java.util.Arrays;
 
@@ -15,4 +15,11 @@ public class NamedExampleTest {
         assertEquals(Arrays.asList("Apple", "Alligator"), namedExample.aWords);
         assertEquals(Arrays.asList("Bread", "Blue"), namedExample.bWords);
     }
+    
+    @Test
+	public void testNamedBind() throws Exception {
+		NamedBindExample namedBindExample = SwordInjector.get(NamedBindExample.class);
+		assertTrue(namedBindExample.namedBind1 instanceof NamedBindExample.NamedBind1);
+		assertTrue(namedBindExample.namedBind2 instanceof NamedBindExample.NamedBind2);
+	}
 }

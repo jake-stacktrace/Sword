@@ -14,19 +14,21 @@ public class Provider {
 
 	public Provider(Element classElement, Element fieldElement, ElementModel elementModel) {
 		this.classElement = classElement;
-		Named namedAnnotation = fieldElement.getAnnotation(Named.class);
-		this.name = namedAnnotation == null ? null : namedAnnotation.value();
-		for (Element qualifier : elementModel.getQualifiers()) {
-			List<? extends AnnotationMirror> annotationMirrors = fieldElement.getAnnotationMirrors();
-			for (AnnotationMirror annotationMirror : annotationMirrors) {
-				Element annotationElement = annotationMirror.getAnnotationType().asElement();
-				if (qualifier.equals(annotationElement)) {
-					qualifiers.add(annotationElement);
+		if (fieldElement != null) {
+			Named namedAnnotation = fieldElement.getAnnotation(Named.class);
+			this.name = namedAnnotation == null ? null : namedAnnotation.value();
+			for (Element qualifier : elementModel.getQualifiers()) {
+				List<? extends AnnotationMirror> annotationMirrors = fieldElement.getAnnotationMirrors();
+				for (AnnotationMirror annotationMirror : annotationMirrors) {
+					Element annotationElement = annotationMirror.getAnnotationType().asElement();
+					if (qualifier.equals(annotationElement)) {
+						qualifiers.add(annotationElement);
+					}
 				}
 			}
 		}
 	}
-	
+
 	public Element getClassElement() {
 		return classElement;
 	}

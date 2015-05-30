@@ -19,7 +19,7 @@ public class ElementModel {
 	private final Map<Provider, ExecutableElement> provides = new HashMap<>();
 	private final ElementHelper elementHelper;
 	private Map<Element, ExecutableElement> constructors = new HashMap<>();
-	private Map<Element, Element> bindings = new HashMap<>();
+	private Map<Provider, Element> bindings = new HashMap<>();
 	private List<Element> qualifiers = new ArrayList<>();
 	private List<Element> mocks = new ArrayList<>();
 
@@ -82,26 +82,12 @@ public class ElementModel {
 	}
 
 	public void addProvides(Element returnElement, ExecutableElement providesMethodElement) {
-		Provider classAndName = new Provider(returnElement, providesMethodElement, this);
-		if (provides.containsKey(classAndName)) {
+		Provider provider = new Provider(returnElement, providesMethodElement, this);
+		if (provides.containsKey(provider)) {
 			elementHelper.error(providesMethodElement,
 					"Duplicate Provides, cannot figure out which Injection to match. Use @Named or a custom Qualifier");
 		}
-		provides.put(classAndName, providesMethodElement);
-	}
-
-	public boolean isProvidingClass(Element classElement, String name) {
-		for (Provider classAndName : provides.keySet()) {
-			if (classAndName.getClassElement().equals(classElement) && classAndName.getName().equals(name)) {
-				return true;
-			}
-		}
-		for (ExecutableElement providerMethodElement : provides.values()) {
-			if (providerMethodElement.getEnclosingElement().equals(classElement)) {
-				return true;
-			}
-		}
-		return false;
+		provides.put(provider, providesMethodElement);
 	}
 
 	public void addSingleton(TypeElement singletonElement) {
@@ -174,7 +160,8 @@ public class ElementModel {
 				bind.to();
 			} catch (MirroredTypeException e2) {
 				Element toElement = elementHelper.asElement(e2.getTypeMirror());
-				if (!constructors.containsKey(toElement) && !provides.containsKey(new Provider(toElement, element, this))) {
+				Provider provider = new Provider(fromElement, element, this);
+				if (!constructors.containsKey(toElement) && !provides.containsKey(provider)) {
 					elementHelper.error(element, "Bind to class with missing @Provides or @Inject constructor");
 					return;
 				}
@@ -182,7 +169,12 @@ public class ElementModel {
 					elementHelper.error(element, "Bind to an incompatible type. " + toElement + " is not a subclass for " + fromElement);
 					return;
 				}
-				bindings.put(fromElement, toElement);
+				if(bindings.containsKey(provider)) {
+					elementHelper.error(element, "Duplicate @Bind for " + fromElement);
+					elementHelper.error(bindings.get(provider), "Duplicate @Bind for " + fromElement);
+					return;
+				}
+				bindings.put(provider, toElement);
 			}
 		}
 	}
@@ -195,12 +187,12 @@ public class ElementModel {
 		return qualifiers;
 	}
 
-	public Element rebind(Element classElement) {
-		Element boundElement = bindings.get(classElement);
+	public Element rebind(Provider provider) {
+		Element boundElement = bindings.get(provider);
 		if (boundElement != null) {
 			return boundElement;
 		}
-		return classElement;
+		return provider.getClassElement();
 	}
 
 	public void addMock(Element element) {
