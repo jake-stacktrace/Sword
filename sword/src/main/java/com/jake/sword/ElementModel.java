@@ -178,6 +178,10 @@ public class ElementModel {
 					elementHelper.error(element, "Bind to class with missing @Provides or @Inject constructor");
 					return;
 				}
+				if(!elementHelper.isSubtype(fromElement, toElement)) {
+					elementHelper.error(element, "Bind to an incompatible type. " + toElement + " is not a subclass for " + fromElement);
+					return;
+				}
 				bindings.put(fromElement, toElement);
 			}
 		}
