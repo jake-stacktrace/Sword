@@ -9,9 +9,9 @@ import java.util.Set;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeMirror;
 
 public class ElementModel {
@@ -19,7 +19,6 @@ public class ElementModel {
 	private final Map<Provider, ExecutableElement> provides = new HashMap<>();
 	private final ElementHelper elementHelper;
 	private Map<Element, ExecutableElement> constructors = new HashMap<>();
-	private Map<Provider, Element> bindings = new HashMap<>();
 	private List<Element> qualifiers = new ArrayList<>();
 	private List<Element> mocks = new ArrayList<>();
 
@@ -82,7 +81,9 @@ public class ElementModel {
 	}
 
 	public void addProvides(Element returnElement, ExecutableElement providesMethodElement) {
-		Provider provider = new Provider(returnElement, providesMethodElement, this);
+		Provides providesAnnotation = providesMethodElement.getAnnotation(Provides.class);
+		boolean overrides = providesAnnotation.overrides();
+		Provider provider = new Provider(returnElement, providesMethodElement, this, overrides);
 		if (provides.containsKey(provider)) {
 			elementHelper.error(providesMethodElement,
 					"Duplicate Provides, cannot figure out which Injection to match. Use @Named or a custom Qualifier");
@@ -99,8 +100,12 @@ public class ElementModel {
 		injectedClasses.add(new InjectedClass(packageElement, classElement, null));
 	}
 
-	private ExecutableElement getProvidesMethod(Element classElement, Element fieldElement) {
-		return provides.get(new Provider(classElement, fieldElement, this));
+	public ExecutableElement getProvidesMethod(Element classElement, Element fieldElement) {
+		ExecutableElement overrideMethod = provides.get(new Provider(classElement, fieldElement, this, true));
+		if (overrideMethod != null) {
+			return overrideMethod;
+		}
+		return provides.get(new Provider(classElement, fieldElement, this, false));
 	}
 
 	public Set<TypeElement> getClassElements() {
@@ -111,31 +116,47 @@ public class ElementModel {
 		return classElements;
 	}
 
-	public Map<String, List<Element>> getSuperClasses() {
+	public Map<String, Set<Element>> getSuperClasses() {
 		Set<TypeElement> classElements = new HashSet<>();
 		for (Element mockElement : mocks) {
 			TypeElement classElement = (TypeElement) mockElement.getEnclosingElement();
 			classElements.add(classElement);
 		}
 		classElements.addAll(getClassElements());
-		Map<String, List<Element>> superClasses = new HashMap<>();
+		Map<String, Set<Element>> superClasses = new HashMap<>();
 		gatherSuperClasses(superClasses, classElements);
 		return superClasses;
 	}
 
-	private void gatherSuperClasses(Map<String, List<Element>> superClasses, Set<TypeElement> elements) {
+	private void gatherSuperClasses(Map<String, Set<Element>> superClasses, Set<TypeElement> elements) {
 		for (TypeElement classElement : elements) {
 			TypeMirror superClassType = classElement.getSuperclass();
-			if (!elements.contains(elementHelper.asElement(superClassType))) {
-				String strSuperClass = superClassType.toString();
-				if (!strSuperClass.equals("java.lang.Object")) {
-					List<Element> classElements = superClasses.get(strSuperClass);
-					if (classElements == null) {
-						classElements = new ArrayList<>();
-						superClasses.put(strSuperClass, classElements);
-					}
-					classElements.add(classElement);
+			gatherSubClassesFromType(superClasses, elements, classElement, superClassType);
+			for (TypeMirror interfaceType : classElement.getInterfaces()) {
+				Element interfaceElement = elementHelper.asElement(interfaceType);
+				if (interfaceElement.getModifiers().contains(Modifier.PUBLIC)) {
+					gatherSubClassesFromType(superClasses, elements, classElement, interfaceType);
 				}
+			}
+		}
+	}
+
+	private void gatherSubClassesFromType(Map<String, Set<Element>> superClasses, Set<TypeElement> elements, TypeElement classElement,
+			TypeMirror superClassType) {
+		Element superClassElement = elementHelper.asElement(superClassType);
+		if (!elements.contains(superClassElement)) {
+			String strSuperClass = superClassType.toString();
+			if (!strSuperClass.equals("java.lang.Object")) {
+				ExecutableElement providedMethod = getProvidesMethod(superClassElement, superClassElement);
+				if (providedMethod != null) {
+					classElement = (TypeElement) superClassElement;
+				}
+				Set<Element> classElements = superClasses.get(strSuperClass);
+				if (classElements == null) {
+					classElements = new HashSet<>();
+					superClasses.put(strSuperClass, classElements);
+				}
+				classElements.add(classElement);
 			}
 		}
 	}
@@ -144,55 +165,12 @@ public class ElementModel {
 		return constructors.get(classElement);
 	}
 
-	public void addBind(Element element) {
-		Bind bind = element.getAnnotation(Bind.class);
-		try {
-			bind.from();
-		} catch (MirroredTypeException e) {
-			Element fromElement = elementHelper.asElement(e.getTypeMirror());
-			ExecutableElement providesMethod = getProvidesMethod(fromElement, element);
-			if (providesMethod != null) {
-				elementHelper.error(providesMethod, "Bind conflicts with Provides, cannot figure out which Injection to match.");
-				elementHelper.error(element, "Bind conflicts with Provides, cannot figure out which Injection to match.");
-				return;
-			}
-			try {
-				bind.to();
-			} catch (MirroredTypeException e2) {
-				Element toElement = elementHelper.asElement(e2.getTypeMirror());
-				Provider provider = new Provider(fromElement, element, this);
-				if (!constructors.containsKey(toElement) && !provides.containsKey(provider)) {
-					elementHelper.error(element, "Bind to class with missing @Provides or @Inject constructor");
-					return;
-				}
-				if(!elementHelper.isSubtype(toElement, fromElement)) {
-					elementHelper.error(element, "Bind to an incompatible type. " + toElement + " is not a subclass for " + fromElement);
-					return;
-				}
-				if(bindings.containsKey(provider)) {
-					elementHelper.error(element, "Duplicate @Bind for " + fromElement);
-					elementHelper.error(bindings.get(provider), "Duplicate @Bind for " + fromElement);
-					return;
-				}
-				bindings.put(provider, toElement);
-			}
-		}
-	}
-
 	public void addQualifier(Element element) {
 		qualifiers.add(element);
 	}
 
 	public List<Element> getQualifiers() {
 		return qualifiers;
-	}
-
-	public Element rebind(Provider provider) {
-		Element boundElement = bindings.get(provider);
-		if (boundElement != null) {
-			return boundElement;
-		}
-		return provider.getClassElement();
 	}
 
 	public void addMock(Element element) {
@@ -231,9 +209,4 @@ public class ElementModel {
 		}
 		return false;
 	}
-
-	public ExecutableElement getProvidedMethod(Element fieldElement) {
-		return getProvidesMethod(elementHelper.asElement(fieldElement.asType()), fieldElement);
-	}
-
 }

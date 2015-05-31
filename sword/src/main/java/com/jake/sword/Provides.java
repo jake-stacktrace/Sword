@@ -11,4 +11,5 @@ import javax.inject.Qualifier;
 @java.lang.annotation.Target(value = { java.lang.annotation.ElementType.METHOD })
 @Retention(RetentionPolicy.SOURCE)
 public @interface Provides {
+	boolean overrides() default false;
 }

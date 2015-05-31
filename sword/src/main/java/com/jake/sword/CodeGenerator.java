@@ -2,13 +2,18 @@ package com.jake.sword;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.inject.Singleton;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.VariableElement;
@@ -49,15 +54,15 @@ public class CodeGenerator {
 					+ ");\n";
 			code += "    }\n";
 		}
-		Map<String, List<Element>> superClasses = elementModel.getSuperClasses();
-		for(String superClassName : superClasses.keySet()) {
-			List<Element> classElements = superClasses.get(superClassName);
+		Map<String, Set<Element>> superClasses = elementModel.getSuperClasses();
+		for (String superClassName : superClasses.keySet()) {
+			Set<Element> classElements = superClasses.get(superClassName);
 			String variableName = getVariableName(superClassName);
 			code += "  public static void inject(" + superClassName + " " + variableName + ") {\n";
-			for(Element classElement : classElements) {
+			for (Element classElement : classElements) {
 				code += "        if(" + variableName + " instanceof " + classElement.toString() + ") {\n";
-				code += "          " + elementHelper.getPackageName(classElement) + "." + PACKAGE_INJECTOR_NAME + 
-						".inject((" + classElement + ")" + variableName + ");\n";
+				code += "          " + elementHelper.getPackageName(classElement) + "." + PACKAGE_INJECTOR_NAME + ".inject(("
+						+ classElement + ")" + variableName + ");\n";
 				code += "        }\n";
 			}
 			code += "    }\n";
@@ -66,17 +71,47 @@ public class CodeGenerator {
 		code += "  public static <T> T get(Class<T> clazz) {\n";
 		for (Element classElement : elementModel.getClassElements()) {
 			if (!elementHelper.isAbstract(classElement)) {
-				String className = classElement.getSimpleName().toString();
+				String className = getClassName(classElement);
 				code += "      if(clazz == " + classElement + ".class) {\n";
 				code += "        return (T)" + elementHelper.getPackageName(classElement) + "." + PACKAGE_INJECTOR_NAME + ".get"
 						+ className + "();\n";
 				code += "      }\n";
 			}
 		}
+		for (String superClassName : superClasses.keySet()) {
+			Set<Element> classElements = superClasses.get(superClassName);
+			code += "      if(clazz == " + superClassName + ".class) {\n";
+			if (classElements.size() == 1) {
+				Element classElement = classElements.iterator().next();
+				code += "        return (T)" + elementHelper.getPackageName(classElement) + "." + PACKAGE_INJECTOR_NAME + ".get"
+						+ getClassName(classElement) + "();\n";
+			} else {
+				code += "        throw new IllegalArgumentException(\"Multiple implementations found for " + superClassName + ": "
+						+ joinAndSort(classElements, ",") + "\");";
+			}
+			code += "      }\n";
+		}
 		code += "    throw new IllegalArgumentException(\"Class not found for injection:\" + clazz);\n";
 		code += "    }\n";
 		code += "}\n";
 		return code;
+	}
+
+	private String joinAndSort(Set<Element> classElements, String delimeter) {
+		String str = "";
+		List<String> strClasses = new ArrayList<>();
+		for (Element element : classElements) {
+			strClasses.add(element.toString());
+		}
+		Collections.sort(strClasses);
+		for (String className : strClasses) {
+			str += className + ",";
+		}
+		// chop off last comma
+		if (str.length() > 0) {
+			str = str.substring(0, str.length() - 1);
+		}
+		return str;
 	}
 
 	private void writeJavaFile(PackageElement packageElement, String fullyQualifiedClassName, String code) {
@@ -104,51 +139,75 @@ public class CodeGenerator {
 		String packageName = packageElement.getQualifiedName().toString();
 		code += "package " + packageName + ";\n";
 		code += "public class " + PACKAGE_INJECTOR_NAME + " {\n";
+		Set<Element> allElements = new HashSet<>();
 		for (Element classElement : elementModel.getClassElements(packageElement)) {
-			String className = elementHelper.getClassName(classElement);
-			String variableName = getVariableName(classElement);
-			boolean isSingleton = false;
-			if (classElement.getAnnotation(Singleton.class) != null) {
-				variableName += "Instance";
-				code += "  private static " + classElement + " " + getVariableName(classElement) + "Instance = "
-						+ construct(classElement, elementModel.getProvidedMethod(classElement)) + ";\n";
-				code += "static { " + PACKAGE_INJECTOR_NAME + ".inject(" + variableName + "); }\n";
-				isSingleton = true;
-			}
-			if (!elementHelper.isAbstract(classElement)) {
-				code += "  public static " + className + " get" + classElement.getSimpleName() + "() {\n";
-				if (!isSingleton) {
-					code += "      " + className + " " + variableName + " = " + construct(classElement, elementModel.getProvidedMethod(classElement))
-							+ ";\n";
-					code += "      " + PACKAGE_INJECTOR_NAME + ".inject(" + variableName + ");\n";
-				}
-				code += "      return " + variableName + ";\n";
-				code += "    }\n";
-				code += "\n";
-			}
-			code += "  public static void inject(" + className + " " + variableName + ") {\n";
-			code += populateMemberFields(packageElement, classElement, variableName);
-			for (Element subClassElement : elementModel.getClassElements()) {
-				if (elementHelper.isSubtype(classElement, subClassElement) && !subClassElement.equals(classElement)) {
-					PackageElement subClassPackageElement = elementHelper.getPackageElement(subClassElement);
-					code += populateMemberFields(subClassPackageElement, subClassElement, variableName);
+			allElements.add(classElement);
+		}
+		Map<String, Set<Element>> superClasses = elementModel.getSuperClasses();
+		for (String strSuperClass : superClasses.keySet()) {
+			Set<Element> elements = superClasses.get(strSuperClass);
+			for (Element element : elements) {
+				if (elementHelper.getPackageElement(element).equals(packageElement)) {
+					allElements.add(element);
 				}
 			}
-			for (Element superClassElement : elementModel.getClassElements()) {
-				if (elementHelper.isSubtype(superClassElement, classElement) && !superClassElement.equals(classElement)) {
-					PackageElement superClassPackageElement = elementHelper.getPackageElement(superClassElement);
-					code += "    if(" + variableName + " instanceof " + superClassElement + ") {\n";
-					String superVariableName = getVariableName(superClassElement);
-					code += "      " + superClassElement + " " + superVariableName + " = (" + superClassElement + ")" + variableName
-							+ ";\n";
-					code += populateMemberFields(superClassPackageElement, superClassElement, superVariableName);
-					code += "    }\n";
-				}
-			}
-			code += "    }\n";
-			code += "\n";
+		}
+		for (Element element : allElements) {
+			code += generatePackInjectorForClassElement(packageElement, element);
 		}
 		code += "}";
+		return code;
+	}
+
+	private String generatePackInjectorForClassElement(PackageElement packageElement, Element classElement) {
+		String className = elementHelper.getClassName(classElement);
+		String variableName = getVariableName(classElement);
+		boolean isSingleton = classElement.getAnnotation(Singleton.class) != null;
+		String code = generatePackageInjectorGetter(classElement, className, variableName, isSingleton);
+		
+		code += "  public static void inject(" + className + " " + variableName + ") {\n";
+		code += populateMemberFields(packageElement, classElement, variableName);
+		for (Element subClassElement : elementModel.getClassElements()) {
+			if (elementHelper.isSubtype(classElement, subClassElement) && !subClassElement.equals(classElement)) {
+				PackageElement subClassPackageElement = elementHelper.getPackageElement(subClassElement);
+				code += populateMemberFields(subClassPackageElement, subClassElement, variableName);
+			}
+		}
+		for (Element superClassElement : elementModel.getClassElements()) {
+			if (elementHelper.isSubtype(superClassElement, classElement) && !superClassElement.equals(classElement)) {
+				PackageElement superClassPackageElement = elementHelper.getPackageElement(superClassElement);
+				code += "    if(" + variableName + " instanceof " + superClassElement + ") {\n";
+				String superVariableName = getVariableName(superClassElement);
+				code += "      " + superClassElement + " " + superVariableName + " = (" + superClassElement + ")" + variableName + ";\n";
+				code += populateMemberFields(superClassPackageElement, superClassElement, superVariableName);
+				code += "    }\n";
+			}
+		}
+		code += "    }\n";
+		code += "\n";
+		return code;
+	}
+
+	private String generatePackageInjectorGetter(Element classElement, String className, String variableName, boolean isSingleton) {
+		String code = "";
+		if(elementHelper.isAbstract(classElement) && elementModel.getProvidesMethod(classElement, classElement) == null) {
+			return code;
+		}
+		if (isSingleton) {
+			variableName += "Instance";
+			code += "  private static " + classElement + " " + getVariableName(classElement) + "Instance = "
+					+ construct(classElement, elementModel.getProvidesMethod(classElement, classElement)) + ";\n";
+			code += "static { " + PACKAGE_INJECTOR_NAME + ".inject(" + variableName + "); }\n";
+		}
+		code += "  public static " + className + " get" + getClassName(classElement) + "() {\n";
+		if (!isSingleton) {
+			code += "      " + className + " " + variableName + " = "
+					+ construct(classElement, elementModel.getProvidesMethod(classElement, classElement)) + ";\n";
+			code += "      " + PACKAGE_INJECTOR_NAME + ".inject(" + variableName + ");\n";
+		}
+		code += "      return " + variableName + ";\n";
+		code += "    }\n";
+		code += "\n";
 		return code;
 	}
 
@@ -161,8 +220,9 @@ public class CodeGenerator {
 				code += "      " + variableName + "." + fieldVariable + " = ";
 				Element fieldTypeElement = elementHelper.asElement(fieldElement.asType());
 				code += construct(fieldTypeElement, fieldElement) + ";\n";
-				List<Element> subFieldElements = elementModel.getFieldElements(elementHelper.getPackageElement(fieldTypeElement), fieldTypeElement);
-				for(Element subFieldElement : subFieldElements) {
+				List<Element> subFieldElements = elementModel.getFieldElements(elementHelper.getPackageElement(fieldTypeElement),
+						fieldTypeElement);
+				for (Element subFieldElement : subFieldElements) {
 					String subFieldVariableName = getVariableName(subFieldElement);
 					code += "      " + variableName + "." + fieldVariable + "." + subFieldVariableName + " = ";
 					Element mock = elementModel.getMock(fieldTypeElement, subFieldElement);
@@ -185,7 +245,7 @@ public class CodeGenerator {
 
 	private String createObject(TypeMirror type, Element referringElement) {
 		if (referringElement.asType().getKind().isPrimitive()) {
-			ExecutableElement providedMethod = elementModel.getProvidedMethod(referringElement);
+			ExecutableElement providedMethod = elementModel.getProvidesMethod(elementHelper.asElement(type), referringElement);
 			if (providedMethod != null) {
 				Element moduleClassElement = providedMethod.getEnclosingElement();
 				return construct(moduleClassElement, referringElement) + "." + providedMethod.getSimpleName().toString() + "()";
@@ -195,19 +255,19 @@ public class CodeGenerator {
 		}
 		Element classElement = elementHelper.asElement(type);
 		PackageElement packageElement = elementHelper.getPackageElement(classElement);
-		ExecutableElement providedMethod = elementModel.getProvidedMethod(referringElement);
 		if (elementModel.containsClassElement(packageElement, classElement)) {
 			return createFromGetterOnInjector(classElement);
-		} else if (providedMethod != null) {
-			Element moduleClassElement = providedMethod.getEnclosingElement();
-			return construct(moduleClassElement, referringElement) + "." + providedMethod.getSimpleName().toString() + "()";
 		} else {
 			return construct(classElement, referringElement);
 		}
 	}
 
 	private String construct(Element classElement, Element referringElement) {
-		classElement = elementModel.rebind(new Provider(classElement, referringElement, elementModel));
+		ExecutableElement providedMethod = elementModel.getProvidesMethod(classElement, referringElement);
+		if (providedMethod != null) {
+			Element moduleClassElement = providedMethod.getEnclosingElement();
+			return construct(moduleClassElement, referringElement) + "." + providedMethod.getSimpleName().toString() + "()";
+		}
 		ExecutableElement constructorElement = elementModel.getInjectedConstructor(classElement);
 		if (constructorElement == null) {
 			PackageElement packageElement = elementHelper.getPackageElement(classElement);
@@ -215,7 +275,7 @@ public class CodeGenerator {
 			if (fieldElements.isEmpty()) {
 				if (referringElement == null) {
 					elementHelper.error(classElement, "Missing @Inject tags on target class " + classElement);
-				} else if (elementModel.getProvidedMethod(referringElement) == null) {
+				} else if (elementModel.getProvidesMethod(classElement, referringElement) == null) {
 					elementHelper.error(referringElement, "Missing @Inject tags on target class " + classElement);
 				}
 			}
@@ -232,19 +292,27 @@ public class CodeGenerator {
 	}
 
 	private String createFromGetterOnInjector(Element classElement) {
-		String className = classElement.getSimpleName().toString();
+		String className = getClassName(classElement);
 		String packageName = elementHelper.getPackageName(classElement);
 		return packageName + "." + PACKAGE_INJECTOR_NAME + ".get" + className + "()";
 	}
 
+	private String getClassName(Element classElement) {
+		String outerClass = "";
+		Element maybeOuterClass = classElement.getEnclosingElement();
+		if (maybeOuterClass.getKind() == ElementKind.CLASS) {
+			outerClass = maybeOuterClass.getSimpleName().toString();
+		}
+		return outerClass + classElement.getSimpleName();
+	}
+
 	private String getVariableName(Element classElement) {
-		String name = classElement.getSimpleName().toString();
-		return getVariableName(name);
+		return getVariableName(classElement.getSimpleName().toString());
 	}
 
 	private String getVariableName(String name) {
-		if(name.contains(".")) {
-			name = name.substring(name.lastIndexOf(".")+1);
+		if (name.contains(".")) {
+			name = name.substring(name.lastIndexOf(".") + 1);
 		}
 		return Character.toLowerCase(name.charAt(0)) + name.substring(1);
 	}

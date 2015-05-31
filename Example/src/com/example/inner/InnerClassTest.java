@@ -10,6 +10,7 @@ public class InnerClassTest {
 	@Test
 	public void testInnerClass() throws Exception {
 		OuterClass innerClass = SwordInjector.get(OuterClass.class);
-		assertNotNull(innerClass.innerClass.innerInnerClass.foo);
+		assertNotNull(innerClass.staticInnerClass.innerInnerClass.foo);
+		assertNotNull(innerClass.nonStaticInnerClass.innerInnerClass.foo);
 	}
 }

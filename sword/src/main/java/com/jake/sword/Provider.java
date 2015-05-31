@@ -11,10 +11,16 @@ public class Provider {
 	private final Element classElement;
 	private final List<Element> qualifiers = new ArrayList<>();
 	private String name;
+	private boolean overrides = false;
 
-	public Provider(Element classElement, Element fieldElement, ElementModel elementModel) {
+	public Provider(Element classElement, Element fieldElement, ElementModel elementModel, boolean overrides) {
 		this.classElement = classElement;
+		this.overrides = overrides;
 		if (fieldElement != null) {
+			Provides provides = fieldElement.getAnnotation(Provides.class);
+			if(provides != null) {
+				this.overrides = provides.overrides();
+			}
 			Named namedAnnotation = fieldElement.getAnnotation(Named.class);
 			this.name = namedAnnotation == null ? null : namedAnnotation.value();
 			for (Element qualifier : elementModel.getQualifiers()) {
@@ -47,6 +53,7 @@ public class Provider {
 		int result = 1;
 		result = prime * result + ((classElement == null) ? 0 : classElement.hashCode());
 		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		result = prime * result + (overrides ? 1231 : 1237);
 		result = prime * result + ((qualifiers == null) ? 0 : qualifiers.hashCode());
 		return result;
 	}
@@ -69,6 +76,8 @@ public class Provider {
 			if (other.name != null)
 				return false;
 		} else if (!name.equals(other.name))
+			return false;
+		if (overrides != other.overrides)
 			return false;
 		if (qualifiers == null) {
 			if (other.qualifiers != null)

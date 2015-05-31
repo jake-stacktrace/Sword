@@ -67,9 +67,6 @@ public class ElementProcessor {
 		for (Element element : env.getElementsAnnotatedWith(Singleton.class)) {
 			elementModel.addSingleton((TypeElement)element);
 		}
-		for (Element element : env.getElementsAnnotatedWith(Bind.class)) {
-			elementModel.addBind(element);
-		}
 	}
 
 	private void addProvidesElement(Element element) {
