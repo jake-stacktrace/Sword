@@ -105,15 +105,17 @@ class SpeedModule {
 	public String getSlow() { return "slow"; }
 }
 </pre>
+
 Sword also knows about mockito annotations to help with testing:
+
 <pre>
 public class Caller {
-	@Inject
-	protected Receiver receiver;
+   @Inject
+   protected Receiver receiver;
 	
-	public void callReceiver() {
-		receiver.receive();
-	}
+   public void callReceiver() {
+	receiver.receive();
+   }
 }
 public class Receiver {
 	@Inject
@@ -129,19 +131,19 @@ public class BaseTest {
    }
 }
 public class CallerTest extends BaseTest {
-	@Inject
-	protected Caller caller;
-	@Mock
-	protected Receiver receiver;
+   @Inject
+   protected Caller caller;
+   @Mock
+   protected Receiver receiver;
 
    @Before
    public void setUp() {
      super.setupTest();
-  }
-	@Test
-	public void testCallerCallsReceiver() {
-		caller.callReceiver();
-		verify(receiver).receive();
+   }
+   @Test
+   public void testCallerCallsReceiver() {
+	caller.callReceiver();
+	verify(receiver).receive();
    }
 }
 </pre>
@@ -152,6 +154,39 @@ Notice how Sword was able to inject from the subclass. It was given a BaseTest, 
 
 In Android, you can do your injection in an Activity base class.
 
+<em>Overriding</em>
+What if you wanted to have UAT tests that had part of the system mocked out, just the external dependencies.
+
+<pre>
+class ProductionModule {
+	@Provides
+	public IRestService getRestService() {
+		return new RestService("www.blah.com/rest");
+	}
+
+	@Provides
+	public ITrackingService getTrackingService() {
+		return new TrackingService("www.blah.com/tracking");
+	}
+}
+</pre>
+
+For QA Testing, we want to point to an internal tracker so it doesn't affect our user statistics we are tracking. We also want a Rest service that has a local set of data. In these builds we also have this module:
+
+<pre>
+class TestModule {
+	@Provides(overrides=true)
+	public IRestService getRestService() {
+		return new RestService("localhost:8080/rest");
+	}
+	@Provides(overrides=true)
+	public ITrackingService getTrackingService() {
+		return new TestTrackingService("localtrackingserver/tracking");
+	}
+}
+</pre>
+
+This TestModule is only included in our test builds and when we run our automated UAT tests. In Android, you can use build types.
 
 Eclipse Support:<br />
 Since Eclipse has incremental compilation, it fools Sword. You will have to clean your project files a lot to use it. This will be addressed in a later release.
