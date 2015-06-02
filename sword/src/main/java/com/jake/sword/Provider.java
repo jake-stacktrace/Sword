@@ -34,6 +34,12 @@ public class Provider {
 			}
 		}
 	}
+	
+	public Provider(Provider provider) {
+		this.classElement = provider.classElement;
+		this.name = provider.name;
+		
+	}
 
 	public Element getClassElement() {
 		return classElement;
@@ -90,5 +96,13 @@ public class Provider {
 	@Override
 	public String toString() {
 		return classElement + " " + getName() + " " + getQualifiers();
+	}
+
+	public boolean isOverrides() {
+		return overrides;
+	}
+
+	public void setOverrides(boolean overrides) {
+		this.overrides = overrides;
 	}
 }

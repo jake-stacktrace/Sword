@@ -67,6 +67,7 @@ public class ElementProcessor {
 		for (Element element : env.getElementsAnnotatedWith(Singleton.class)) {
 			elementModel.addSingleton((TypeElement)element);
 		}
+		elementModel.checkOverridesProvidesErrors();
 	}
 
 	private void addProvidesElement(Element element) {

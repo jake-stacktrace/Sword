@@ -16,7 +16,7 @@ import javax.lang.model.type.TypeMirror;
 
 public class ElementModel {
 	private final List<InjectedClass> injectedClasses = new ArrayList<>();
-	private final Map<Provider, ExecutableElement> provides = new HashMap<>();
+	private final Map<Provider, ExecutableElement> providers = new HashMap<>();
 	private final ElementHelper elementHelper;
 	private Map<Element, ExecutableElement> constructors = new HashMap<>();
 	private List<Element> qualifiers = new ArrayList<>();
@@ -84,11 +84,11 @@ public class ElementModel {
 		Provides providesAnnotation = providesMethodElement.getAnnotation(Provides.class);
 		boolean overrides = providesAnnotation.overrides();
 		Provider provider = new Provider(returnElement, providesMethodElement, this, overrides);
-		if (provides.containsKey(provider)) {
+		if (providers.containsKey(provider)) {
 			elementHelper.error(providesMethodElement,
 					"Duplicate Provides, cannot figure out which Injection to match. Use @Named or a custom Qualifier");
 		}
-		provides.put(provider, providesMethodElement);
+		providers.put(provider, providesMethodElement);
 	}
 
 	public void addSingleton(TypeElement singletonElement) {
@@ -101,11 +101,11 @@ public class ElementModel {
 	}
 
 	public ExecutableElement getProvidesMethod(Element classElement, Element fieldElement) {
-		ExecutableElement overrideMethod = provides.get(new Provider(classElement, fieldElement, this, true));
+		ExecutableElement overrideMethod = providers.get(new Provider(classElement, fieldElement, this, true));
 		if (overrideMethod != null) {
 			return overrideMethod;
 		}
-		return provides.get(new Provider(classElement, fieldElement, this, false));
+		return providers.get(new Provider(classElement, fieldElement, this, false));
 	}
 
 	public Set<TypeElement> getClassElements() {
@@ -208,5 +208,17 @@ public class ElementModel {
 			}
 		}
 		return false;
+	}
+
+	public void checkOverridesProvidesErrors() {
+		for(Provider provider : providers.keySet()) {
+			if(provider.isOverrides()) {
+				Provider originalProvider = new Provider(provider);
+				originalProvider.setOverrides(false);
+				if(!providers.containsKey(originalProvider)) {
+					elementHelper.error(providers.get(provider), "Overriding @Provides, but no original @Provides found");
+				}
+			}
+		}
 	}
 }
