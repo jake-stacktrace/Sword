@@ -52,16 +52,9 @@ class FooModule {
 }
 </pre>
 
-Or you can bind manually. This teaches Sword to create a Foo whenever it needs IFoo:
-<pre>
-@Bind(from=IFoo.class,to=Foo.class)
-public class Binder {
-}
-</pre>
-
 If an instance is bound from more than one place, Sword raises an error. 
 
-Or if a class or interface is bound from more than one of @Bind, @Provides or an @Inject constructor, that's an error. 
+If a class or interface is bound from both @Provides and an @Inject constructor, that's an error. 
 
 @Named is supported too:
 <pre>
@@ -164,4 +157,4 @@ Eclipse Support:<br />
 Since Eclipse has incremental compilation, it fools Sword. You will have to clean your project files a lot to use it. This will be addressed in a later release.
 
 Supported Annotations:<br />
-  @Inject, @Provides, @Named, @Qualifier, @Singleton, @Mock, @Bind
+  @Inject, @Provides, @Named, @Qualifier, @Singleton, @Mock
