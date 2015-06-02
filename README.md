@@ -154,7 +154,7 @@ Notice how Sword was able to inject from the subclass. It was given a BaseTest, 
 
 In Android, you can do your injection in an Activity base class.
 
-<em>Overriding</em>
+<p><strong>Overriding</strong></p>
 What if you wanted to have UAT tests that had part of the system mocked out, just the external dependencies.
 
 <pre>
