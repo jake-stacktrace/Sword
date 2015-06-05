@@ -2,6 +2,7 @@ package com.jake.sword;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
@@ -73,8 +75,12 @@ public class CodeGenerator {
 			if (!elementHelper.isAbstract(classElement)) {
 				String className = getClassName(classElement);
 				code += "      if(clazz == " + classElement + ".class) {\n";
-				code += "        return (T)" + elementHelper.getPackageName(classElement) + "." + PACKAGE_INJECTOR_NAME + ".get"
+				if(elementHelper.getNonStaticOuterClass(classElement) != null) {
+					code += "throw new IllegalArgumentException(\"Cannot create instance of inner non-static class " + classElement + ".\");\n";
+				} else {
+					code += "        return (T)" + elementHelper.getPackageName(classElement) + "." + PACKAGE_INJECTOR_NAME + ".get"
 						+ className + "();\n";
+				}
 				code += "      }\n";
 			}
 		}
@@ -196,13 +202,21 @@ public class CodeGenerator {
 		if (isSingleton) {
 			variableName += "Instance";
 			code += "  private static " + classElement + " " + getVariableName(classElement) + "Instance = "
-					+ construct(classElement, elementModel.getProvidesMethod(classElement, classElement)) + ";\n";
+					+ construct(classElement, elementModel.getProvidesMethod(classElement, classElement), variableName) + ";\n";
 			code += "static { " + PACKAGE_INJECTOR_NAME + ".inject(" + variableName + "); }\n";
 		}
-		code += "  public static " + className + " get" + getClassName(classElement) + "() {\n";
+		code += "  public static " + className + " get" + getClassName(classElement) + "(";
+		TypeElement outerClass = elementHelper.getNonStaticOuterClass(classElement);
+		if(outerClass != null) {
+			code += outerClass + " outer";
+		}
+		code += ") {\n";
 		if (!isSingleton) {
-			code += "      " + className + " " + variableName + " = "
-					+ construct(classElement, elementModel.getProvidesMethod(classElement, classElement)) + ";\n";
+			code += "      " + classElement + " " + variableName + " = ";
+			if(outerClass != null) {
+				code += "outer.";
+			}
+			code += construct(classElement, elementModel.getProvidesMethod(classElement, classElement), "outer") + ";\n";
 			code += "      " + PACKAGE_INJECTOR_NAME + ".inject(" + variableName + ");\n";
 		}
 		code += "      return " + variableName + ";\n";
@@ -219,7 +233,7 @@ public class CodeGenerator {
 				String fieldVariable = getVariableName(fieldElement);
 				code += "      " + variableName + "." + fieldVariable + " = ";
 				Element fieldTypeElement = elementHelper.asElement(fieldElement.asType());
-				code += construct(fieldTypeElement, fieldElement) + ";\n";
+				code += construct(fieldTypeElement, fieldElement, variableName) + ";\n";
 				List<Element> subFieldElements = elementModel.getFieldElements(elementHelper.getPackageElement(fieldTypeElement),
 						fieldTypeElement);
 				for (Element subFieldElement : subFieldElements) {
@@ -229,7 +243,7 @@ public class CodeGenerator {
 					if (mock != null) {
 						code += variableName + "." + mock.getSimpleName() + ";\n";
 					} else {
-						code += createObject(subFieldElement.asType(), subFieldElement) + ";\n";
+						code += createObject(subFieldElement.asType(), subFieldElement, variableName) + ";\n";
 					}
 				}
 			}
@@ -237,18 +251,18 @@ public class CodeGenerator {
 			for (Element fieldElement : fieldElements) {
 				String fieldVariable = getVariableName(fieldElement);
 				code += "      " + variableName + "." + fieldVariable + " = ";
-				code += createObject(fieldElement.asType(), fieldElement) + ";\n";
+				code += createObject(fieldElement.asType(), fieldElement, variableName) + ";\n";
 			}
 		}
 		return code;
 	}
 
-	private String createObject(TypeMirror type, Element referringElement) {
+	private String createObject(TypeMirror type, Element referringElement, String variableName) {
 		if (referringElement.asType().getKind().isPrimitive()) {
 			ExecutableElement providedMethod = elementModel.getProvidesMethod(elementHelper.asElement(type), referringElement);
 			if (providedMethod != null) {
 				Element moduleClassElement = providedMethod.getEnclosingElement();
-				return construct(moduleClassElement, referringElement) + "." + providedMethod.getSimpleName().toString() + "()";
+				return construct(moduleClassElement, referringElement, variableName) + "." + providedMethod.getSimpleName().toString() + "()";
 			}
 			elementHelper.error(referringElement, "Primitive types must be provided");
 			return "??";
@@ -256,17 +270,17 @@ public class CodeGenerator {
 		Element classElement = elementHelper.asElement(type);
 		PackageElement packageElement = elementHelper.getPackageElement(classElement);
 		if (elementModel.containsClassElement(packageElement, classElement)) {
-			return createFromGetterOnInjector(classElement);
+			return createFromGetterOnInjector(classElement, variableName);
 		} else {
-			return construct(classElement, referringElement);
+			return construct(classElement, referringElement, variableName);
 		}
 	}
 
-	private String construct(Element classElement, Element referringElement) {
+	private String construct(Element classElement, Element referringElement, String variableName) {
 		ExecutableElement providedMethod = elementModel.getProvidesMethod(classElement, referringElement);
 		if (providedMethod != null) {
 			Element moduleClassElement = providedMethod.getEnclosingElement();
-			return construct(moduleClassElement, referringElement) + "." + providedMethod.getSimpleName().toString() + "()";
+			return construct(moduleClassElement, referringElement, variableName) + "." + providedMethod.getSimpleName().toString() + "()";
 		}
 		ExecutableElement constructorElement = elementModel.getInjectedConstructor(classElement);
 		if (constructorElement == null) {
@@ -275,32 +289,43 @@ public class CodeGenerator {
 			if (fieldElements.isEmpty()) {
 				if (referringElement == null) {
 					elementHelper.error(classElement, "Missing @Inject tags on target class " + classElement);
-				} else if (elementModel.getProvidesMethod(classElement, referringElement) == null) {
-					elementHelper.error(referringElement, "Missing @Inject tags on target class " + classElement);
 				}
 			}
-			return "new " + classElement + "()";
+			return makeNewClass(classElement, "");
 		}
 		String params = "";
 		for (VariableElement param : constructorElement.getParameters()) {
-			params += createObject(param.asType(), param) + ",";
+			params += createObject(param.asType(), param, variableName) + ",";
 		}
 		if (params.length() > 0) {
 			params = params.substring(0, params.length() - 1);
 		}
-		return "new " + classElement + "(" + params + ")";
+		return makeNewClass(classElement, params);
 	}
 
-	private String createFromGetterOnInjector(Element classElement) {
+	private String makeNewClass(Element classElement, String params) {
+		String className = classElement.toString();
+		if(elementHelper.getNonStaticOuterClass(classElement) != null) {
+			className = classElement.getSimpleName().toString();
+		}
+		return "new " + className + "(" + params + ")";
+	}
+
+	private String createFromGetterOnInjector(Element classElement, String variableName) {
 		String className = getClassName(classElement);
 		String packageName = elementHelper.getPackageName(classElement);
-		return packageName + "." + PACKAGE_INJECTOR_NAME + ".get" + className + "()";
+		String code = packageName + "." + PACKAGE_INJECTOR_NAME + ".get" + className + "(";
+		if(elementHelper.getNonStaticOuterClass(classElement) != null) {
+			code += variableName;
+		}
+		code += ")";
+		return code;
 	}
 
 	private String getClassName(Element classElement) {
 		String outerClass = "";
 		Element maybeOuterClass = classElement.getEnclosingElement();
-		if (maybeOuterClass.getKind() == ElementKind.CLASS) {
+		if (maybeOuterClass.getKind() == ElementKind.CLASS && maybeOuterClass.getModifiers().contains(Modifier.STATIC)) {
 			outerClass = maybeOuterClass.getSimpleName().toString();
 		}
 		return outerClass + classElement.getSimpleName();

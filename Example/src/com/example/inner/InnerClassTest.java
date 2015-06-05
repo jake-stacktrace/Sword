@@ -1,6 +1,6 @@
 package com.example.inner;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
 
 import org.junit.Test;
 
@@ -11,6 +11,6 @@ public class InnerClassTest {
 	public void testInnerClass() throws Exception {
 		OuterClass innerClass = SwordInjector.get(OuterClass.class);
 		assertNotNull(innerClass.staticInnerClass.innerInnerClass.foo);
-		assertNotNull(innerClass.nonStaticInnerClass.innerInnerClass.foo);
+		assertNotNull(innerClass.nonStaticInnerClass);
 	}
 }

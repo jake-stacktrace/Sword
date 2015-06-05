@@ -5,6 +5,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
@@ -51,5 +52,13 @@ public class ElementHelper {
 			curElement = curElement.getEnclosingElement();
 		}
 		return outerClasses + classElement.getSimpleName().toString();
+	}
+
+	public TypeElement getNonStaticOuterClass(Element classElement) {
+		Element maybeOuterClass = classElement.getEnclosingElement();
+		if (maybeOuterClass.getKind() == ElementKind.CLASS && !classElement.getModifiers().contains(Modifier.STATIC)) {
+			return (TypeElement) maybeOuterClass;
+		}
+		return null;
 	}
 }

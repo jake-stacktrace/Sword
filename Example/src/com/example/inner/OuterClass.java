@@ -24,16 +24,8 @@ public class OuterClass {
 		}
 	}
 	public class NonStaticInnerClass {
-		InnerInnerClass innerInnerClass;
-
 		@Inject
-		NonStaticInnerClass(InnerInnerClass innerInnerClass) {
-			this.innerInnerClass = innerInnerClass;
-		}
-		
-		public class InnerInnerClass {
-			@Inject
-			IFoo foo;
+		NonStaticInnerClass() {
 		}
 	}
 }
