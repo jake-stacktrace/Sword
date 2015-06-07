@@ -116,19 +116,19 @@ public class ElementModel {
 		return classElements;
 	}
 
-	public Map<String, Set<Element>> getSuperClasses() {
+	public Map<String, Set<TypeElement>> getSuperClasses() {
 		Set<TypeElement> classElements = new HashSet<>();
 		for (Element mockElement : mocks) {
 			TypeElement classElement = (TypeElement) mockElement.getEnclosingElement();
 			classElements.add(classElement);
 		}
 		classElements.addAll(getClassElements());
-		Map<String, Set<Element>> superClasses = new HashMap<>();
+		Map<String, Set<TypeElement>> superClasses = new HashMap<>();
 		gatherSuperClasses(superClasses, classElements);
 		return superClasses;
 	}
 
-	private void gatherSuperClasses(Map<String, Set<Element>> superClasses, Set<TypeElement> elements) {
+	private void gatherSuperClasses(Map<String, Set<TypeElement>> superClasses, Set<TypeElement> elements) {
 		for (TypeElement classElement : elements) {
 			TypeMirror superClassType = classElement.getSuperclass();
 			gatherSubClassesFromType(superClasses, elements, classElement, superClassType);
@@ -141,7 +141,7 @@ public class ElementModel {
 		}
 	}
 
-	private void gatherSubClassesFromType(Map<String, Set<Element>> superClasses, Set<TypeElement> elements, TypeElement classElement,
+	private void gatherSubClassesFromType(Map<String, Set<TypeElement>> superClasses, Set<TypeElement> elements, TypeElement classElement,
 			TypeMirror superClassType) {
 		Element superClassElement = elementHelper.asElement(superClassType);
 		if (!elements.contains(superClassElement)) {
@@ -151,7 +151,7 @@ public class ElementModel {
 				if (providedMethod != null) {
 					classElement = (TypeElement) superClassElement;
 				}
-				Set<Element> classElements = superClasses.get(strSuperClass);
+				Set<TypeElement> classElements = superClasses.get(strSuperClass);
 				if (classElements == null) {
 					classElements = new HashSet<>();
 					superClasses.put(strSuperClass, classElements);

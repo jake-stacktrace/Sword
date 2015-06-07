@@ -24,8 +24,5 @@ public class OuterClass {
 		}
 	}
 	public class NonStaticInnerClass {
-		@Inject
-		NonStaticInnerClass() {
-		}
 	}
 }

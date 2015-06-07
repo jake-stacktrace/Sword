@@ -12,6 +12,7 @@ import java.util.Set;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -56,9 +57,9 @@ public class CodeGenerator {
 					+ ");\n";
 			code += "    }\n";
 		}
-		Map<String, Set<Element>> superClasses = elementModel.getSuperClasses();
+		Map<String, Set<TypeElement>> superClasses = elementModel.getSuperClasses();
 		for (String superClassName : superClasses.keySet()) {
-			Set<Element> classElements = superClasses.get(superClassName);
+			Set<TypeElement> classElements = superClasses.get(superClassName);
 			String variableName = getVariableName(superClassName);
 			code += "  public static void inject(" + superClassName + " " + variableName + ") {\n";
 			for (Element classElement : classElements) {
@@ -75,17 +76,18 @@ public class CodeGenerator {
 			if (!elementHelper.isAbstract(classElement)) {
 				String className = getClassName(classElement);
 				code += "      if(clazz == " + classElement + ".class) {\n";
-				if(elementHelper.getNonStaticOuterClass(classElement) != null) {
-					code += "throw new IllegalArgumentException(\"Cannot create instance of inner non-static class " + classElement + ".\");\n";
+				if (elementHelper.getNonStaticOuterClass(classElement) != null) {
+					code += "throw new IllegalArgumentException(\"Cannot create instance of inner non-static class " + classElement
+							+ ".\");\n";
 				} else {
 					code += "        return (T)" + elementHelper.getPackageName(classElement) + "." + PACKAGE_INJECTOR_NAME + ".get"
-						+ className + "();\n";
+							+ className + "();\n";
 				}
 				code += "      }\n";
 			}
 		}
 		for (String superClassName : superClasses.keySet()) {
-			Set<Element> classElements = superClasses.get(superClassName);
+			Set<TypeElement> classElements = superClasses.get(superClassName);
 			code += "      if(clazz == " + superClassName + ".class) {\n";
 			if (classElements.size() == 1) {
 				Element classElement = classElements.iterator().next();
@@ -103,7 +105,7 @@ public class CodeGenerator {
 		return code;
 	}
 
-	private String joinAndSort(Set<Element> classElements, String delimeter) {
+	private String joinAndSort(Set<TypeElement> classElements, String delimeter) {
 		String str = "";
 		List<String> strClasses = new ArrayList<>();
 		for (Element element : classElements) {
@@ -145,41 +147,41 @@ public class CodeGenerator {
 		String packageName = packageElement.getQualifiedName().toString();
 		code += "package " + packageName + ";\n";
 		code += "public class " + PACKAGE_INJECTOR_NAME + " {\n";
-		Set<Element> allElements = new HashSet<>();
-		for (Element classElement : elementModel.getClassElements(packageElement)) {
+		Set<TypeElement> allElements = new HashSet<>();
+		for (TypeElement classElement : elementModel.getClassElements(packageElement)) {
 			allElements.add(classElement);
 		}
-		Map<String, Set<Element>> superClasses = elementModel.getSuperClasses();
+		Map<String, Set<TypeElement>> superClasses = elementModel.getSuperClasses();
 		for (String strSuperClass : superClasses.keySet()) {
-			Set<Element> elements = superClasses.get(strSuperClass);
-			for (Element element : elements) {
+			Set<TypeElement> elements = superClasses.get(strSuperClass);
+			for (TypeElement element : elements) {
 				if (elementHelper.getPackageElement(element).equals(packageElement)) {
 					allElements.add(element);
 				}
 			}
 		}
-		for (Element element : allElements) {
+		for (TypeElement element : allElements) {
 			code += generatePackInjectorForClassElement(packageElement, element);
 		}
 		code += "}";
 		return code;
 	}
 
-	private String generatePackInjectorForClassElement(PackageElement packageElement, Element classElement) {
+	private String generatePackInjectorForClassElement(PackageElement packageElement, TypeElement classElement) {
 		String className = elementHelper.getClassName(classElement);
 		String variableName = getVariableName(classElement);
 		boolean isSingleton = classElement.getAnnotation(Singleton.class) != null;
 		String code = generatePackageInjectorGetter(classElement, className, variableName, isSingleton);
-		
+
 		code += "  public static void inject(" + className + " " + variableName + ") {\n";
 		code += populateMemberFields(packageElement, classElement, variableName);
-		for (Element subClassElement : elementModel.getClassElements()) {
+		for (TypeElement subClassElement : elementModel.getClassElements()) {
 			if (elementHelper.isSubtype(classElement, subClassElement) && !subClassElement.equals(classElement)) {
 				PackageElement subClassPackageElement = elementHelper.getPackageElement(subClassElement);
 				code += populateMemberFields(subClassPackageElement, subClassElement, variableName);
 			}
 		}
-		for (Element superClassElement : elementModel.getClassElements()) {
+		for (TypeElement superClassElement : elementModel.getClassElements()) {
 			if (elementHelper.isSubtype(superClassElement, classElement) && !superClassElement.equals(classElement)) {
 				PackageElement superClassPackageElement = elementHelper.getPackageElement(superClassElement);
 				code += "    if(" + variableName + " instanceof " + superClassElement + ") {\n";
@@ -194,9 +196,9 @@ public class CodeGenerator {
 		return code;
 	}
 
-	private String generatePackageInjectorGetter(Element classElement, String className, String variableName, boolean isSingleton) {
+	private String generatePackageInjectorGetter(TypeElement classElement, String className, String variableName, boolean isSingleton) {
 		String code = "";
-		if(elementHelper.isAbstract(classElement) && elementModel.getProvidesMethod(classElement, classElement) == null) {
+		if (elementHelper.isAbstract(classElement) && elementModel.getProvidesMethod(classElement, classElement) == null) {
 			return code;
 		}
 		if (isSingleton) {
@@ -207,13 +209,13 @@ public class CodeGenerator {
 		}
 		code += "  public static " + className + " get" + getClassName(classElement) + "(";
 		TypeElement outerClass = elementHelper.getNonStaticOuterClass(classElement);
-		if(outerClass != null) {
+		if (outerClass != null) {
 			code += outerClass + " outer";
 		}
 		code += ") {\n";
 		if (!isSingleton) {
 			code += "      " + classElement + " " + variableName + " = ";
-			if(outerClass != null) {
+			if (outerClass != null) {
 				code += "outer.";
 			}
 			code += construct(classElement, elementModel.getProvidesMethod(classElement, classElement), "outer") + ";\n";
@@ -225,14 +227,14 @@ public class CodeGenerator {
 		return code;
 	}
 
-	private String populateMemberFields(PackageElement packageElement, Element classElement, String variableName) {
+	private String populateMemberFields(PackageElement packageElement, TypeElement classElement, String variableName) {
 		String code = "";
 		List<Element> fieldElements = elementModel.getFieldElements(packageElement, classElement);
 		if (elementModel.isTestClass(classElement)) {
 			for (Element fieldElement : fieldElements) {
 				String fieldVariable = getVariableName(fieldElement);
 				code += "      " + variableName + "." + fieldVariable + " = ";
-				Element fieldTypeElement = elementHelper.asElement(fieldElement.asType());
+				TypeElement fieldTypeElement = (TypeElement) elementHelper.asElement(fieldElement.asType());
 				code += construct(fieldTypeElement, fieldElement, variableName) + ";\n";
 				List<Element> subFieldElements = elementModel.getFieldElements(elementHelper.getPackageElement(fieldTypeElement),
 						fieldTypeElement);
@@ -261,13 +263,14 @@ public class CodeGenerator {
 		if (referringElement.asType().getKind().isPrimitive()) {
 			ExecutableElement providedMethod = elementModel.getProvidesMethod(elementHelper.asElement(type), referringElement);
 			if (providedMethod != null) {
-				Element moduleClassElement = providedMethod.getEnclosingElement();
-				return construct(moduleClassElement, referringElement, variableName) + "." + providedMethod.getSimpleName().toString() + "()";
+				TypeElement moduleClassElement = (TypeElement) providedMethod.getEnclosingElement();
+				return construct(moduleClassElement, referringElement, variableName) + "." + providedMethod.getSimpleName().toString()
+						+ "()";
 			}
 			elementHelper.error(referringElement, "Primitive types must be provided");
-			return "??";
+			return "0";
 		}
-		Element classElement = elementHelper.asElement(type);
+		TypeElement classElement = (TypeElement) elementHelper.asElement(type);
 		PackageElement packageElement = elementHelper.getPackageElement(classElement);
 		if (elementModel.containsClassElement(packageElement, classElement)) {
 			return createFromGetterOnInjector(classElement, variableName);
@@ -276,37 +279,48 @@ public class CodeGenerator {
 		}
 	}
 
-	private String construct(Element classElement, Element referringElement, String variableName) {
+	private String construct(TypeElement classElement, Element referringElement, String variableName) {
 		ExecutableElement providedMethod = elementModel.getProvidesMethod(classElement, referringElement);
 		if (providedMethod != null) {
-			Element moduleClassElement = providedMethod.getEnclosingElement();
+			TypeElement moduleClassElement = (TypeElement) providedMethod.getEnclosingElement();
 			return construct(moduleClassElement, referringElement, variableName) + "." + providedMethod.getSimpleName().toString() + "()";
 		}
 		ExecutableElement constructorElement = elementModel.getInjectedConstructor(classElement);
-		if (constructorElement == null) {
-			PackageElement packageElement = elementHelper.getPackageElement(classElement);
-			List<Element> fieldElements = elementModel.getFieldElements(packageElement, classElement);
-			if (fieldElements.isEmpty()) {
-				if (referringElement == null) {
-					elementHelper.error(classElement, "Missing @Inject tags on target class " + classElement);
-				}
-			}
-			return makeNewClass(classElement, "");
-		}
 		String params = "";
-		for (VariableElement param : constructorElement.getParameters()) {
-			params += createObject(param.asType(), param, variableName) + ",";
+		if (constructorElement != null) {
+			for (VariableElement param : constructorElement.getParameters()) {
+				params += createObject(param.asType(), param, variableName) + ",";
+			}
+			if (params.length() > 0) {
+				params = params.substring(0, params.length() - 1);
+			}
 		}
-		if (params.length() > 0) {
-			params = params.substring(0, params.length() - 1);
+		TypeElement outerClass = elementHelper.getNonStaticOuterClass(classElement);
+		if(outerClass != null) {
+			return variableName + "." + makeNewClass(classElement, params);
 		}
 		return makeNewClass(classElement, params);
 	}
 
-	private String makeNewClass(Element classElement, String params) {
+	private String makeNewClass(TypeElement classElement, String params) {
 		String className = classElement.toString();
-		if(elementHelper.getNonStaticOuterClass(classElement) != null) {
+		if (elementHelper.getNonStaticOuterClass(classElement) != null) {
 			className = classElement.getSimpleName().toString();
+		}
+		boolean foundNoArgConstructor = false;
+		for (Element element : classElement.getEnclosedElements()) {
+			if (element.getKind() == ElementKind.CONSTRUCTOR) {
+				ExecutableElement executableElement = (ExecutableElement) element;
+				if (executableElement.getParameters().size() == 0) {
+					foundNoArgConstructor = true;
+				}
+				if (executableElement.getAnnotation(Inject.class) != null) {
+					foundNoArgConstructor = true;
+				}
+			}
+		}
+		if (!foundNoArgConstructor) {
+			elementHelper.error(classElement, "No default no-argument or @Inject constructor found for " + className);
 		}
 		return "new " + className + "(" + params + ")";
 	}
@@ -315,7 +329,7 @@ public class CodeGenerator {
 		String className = getClassName(classElement);
 		String packageName = elementHelper.getPackageName(classElement);
 		String code = packageName + "." + PACKAGE_INJECTOR_NAME + ".get" + className + "(";
-		if(elementHelper.getNonStaticOuterClass(classElement) != null) {
+		if (elementHelper.getNonStaticOuterClass(classElement) != null) {
 			code += variableName;
 		}
 		code += ")";
