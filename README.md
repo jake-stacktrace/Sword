@@ -30,13 +30,10 @@ SwordInjector.inject(blah);
 // blah.foo now has a new instance of Foo. Or you can just do:
 Blah blah = SwordInjector.get(Blah.class);
 </pre>
-In order to create Foo, Foo must have members or a constructor marked with @Inject.
+In order to create Foo, Foo must have a constructor marked with @Inject or a default constructor.
 
 <pre>
 class Foo {
-  @Inject
-  public Foo() {
-  }
 }
 </pre>
 
@@ -61,7 +58,9 @@ If a class or interface is bound from both @Provides and an @Inject constructor,
 class Blah {
   @Inject
   @Named("foo1")
-  protected Foo foo;
+  protected Foo firstFoo;
+  @Named("foo2")
+  protected Foo secondFoo;
 }
 
 class FooModule {
@@ -118,10 +117,8 @@ public class Caller {
    }
 }
 public class Receiver {
-	@Inject
-	Receiver() {}
-
 	public void receive() {
+		// ...
 	}
 }
 public class BaseTest {
