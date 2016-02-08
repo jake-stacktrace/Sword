@@ -18,7 +18,7 @@ public class SwordProcessor extends AbstractProcessor {
 
 	@Override
 	public Set<String> getSupportedAnnotationTypes() {
-		Set<String> supportedTypes = new HashSet<>();
+		Set<String> supportedTypes = new HashSet<String>();
 		supportedTypes.addAll(Arrays.asList("javax.inject.Inject", "com.jake.Provides", "javax.inject.Singleton", "javax.inject.Named",
 				"com.jake.Bind", "javax.inject.Qualifier", "org.mockito.Mock"));
 		return supportedTypes;

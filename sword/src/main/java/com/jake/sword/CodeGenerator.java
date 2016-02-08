@@ -107,7 +107,7 @@ public class CodeGenerator {
 
 	private String joinAndSort(Set<TypeElement> classElements, String delimeter) {
 		String str = "";
-		List<String> strClasses = new ArrayList<>();
+		List<String> strClasses = new ArrayList<String>();
 		for (Element element : classElements) {
 			strClasses.add(element.toString());
 		}
@@ -147,7 +147,7 @@ public class CodeGenerator {
 		String packageName = packageElement.getQualifiedName().toString();
 		code += "package " + packageName + ";\n";
 		code += "public class " + PACKAGE_INJECTOR_NAME + " {\n";
-		Set<TypeElement> allElements = new HashSet<>();
+		Set<TypeElement> allElements = new HashSet<TypeElement>();
 		for (TypeElement classElement : elementModel.getClassElements(packageElement)) {
 			allElements.add(classElement);
 		}

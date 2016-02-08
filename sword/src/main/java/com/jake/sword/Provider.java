@@ -9,7 +9,7 @@ import javax.lang.model.element.Element;
 
 public class Provider {
 	private final Element classElement;
-	private final List<Element> qualifiers = new ArrayList<>();
+	private final List<Element> qualifiers = new ArrayList<Element>();
 	private String name;
 	private boolean overrides = false;
 

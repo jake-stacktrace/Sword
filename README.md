@@ -10,7 +10,8 @@ repositories {
 	jcenter()
 }
 dependencies {
-    apt 'com.jake:sword:0.4.0'
+    compile 'com.jake:sword:0.5.0'
+    apt 'com.jake:sword:0.5.0'
 }
 </pre>
 

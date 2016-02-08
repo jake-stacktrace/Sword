@@ -15,12 +15,12 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 public class ElementModel {
-	private final List<InjectedClass> injectedClasses = new ArrayList<>();
-	private final Map<Provider, ExecutableElement> providers = new HashMap<>();
+	private final List<InjectedClass> injectedClasses = new ArrayList<InjectedClass>();
+	private final Map<Provider, ExecutableElement> providers = new HashMap<Provider,ExecutableElement>();
 	private final ElementHelper elementHelper;
-	private Map<Element, ExecutableElement> constructors = new HashMap<>();
-	private List<Element> qualifiers = new ArrayList<>();
-	private List<Element> mocks = new ArrayList<>();
+	private Map<Element, ExecutableElement> constructors = new HashMap<Element,ExecutableElement>();
+	private List<Element> qualifiers = new ArrayList<Element>();
+	private List<Element> mocks = new ArrayList<Element>();
 
 	public ElementModel(ElementHelper elementHelper) {
 		this.elementHelper = elementHelper;
@@ -31,7 +31,7 @@ public class ElementModel {
 	}
 
 	public Set<PackageElement> getPackageElements() {
-		Set<PackageElement> packageElements = new HashSet<>();
+		Set<PackageElement> packageElements = new HashSet<PackageElement>();
 		for (InjectedClass injectedClass : injectedClasses) {
 			packageElements.add(injectedClass.getPackageElement());
 		}
@@ -39,7 +39,7 @@ public class ElementModel {
 	}
 
 	public Set<TypeElement> getClassElements(PackageElement packageElement) {
-		Set<TypeElement> classElements = new HashSet<>();
+		Set<TypeElement> classElements = new HashSet<TypeElement>();
 		for (InjectedClass injectedClass : injectedClasses) {
 			if (injectedClass.getPackageElement().equals(packageElement)) {
 				classElements.add(injectedClass.getClassElement());
@@ -49,7 +49,7 @@ public class ElementModel {
 	}
 
 	public List<Element> getFieldElements(PackageElement packageElement, Element classElement) {
-		List<Element> fieldElements = new ArrayList<>();
+		List<Element> fieldElements = new ArrayList<Element>();
 		for (InjectedClass injectedClass : injectedClasses) {
 			if (injectedClass.getPackageElement().equals(packageElement) && injectedClass.getClassElement().equals(classElement)) {
 				Element fieldElement = injectedClass.getFieldElement();
@@ -109,7 +109,7 @@ public class ElementModel {
 	}
 
 	public Set<TypeElement> getClassElements() {
-		Set<TypeElement> classElements = new HashSet<>();
+		Set<TypeElement> classElements = new HashSet<TypeElement>();
 		for (PackageElement packageElement : getPackageElements()) {
 			classElements.addAll(getClassElements(packageElement));
 		}
@@ -117,13 +117,13 @@ public class ElementModel {
 	}
 
 	public Map<String, Set<TypeElement>> getSuperClasses() {
-		Set<TypeElement> classElements = new HashSet<>();
+		Set<TypeElement> classElements = new HashSet<TypeElement>();
 		for (Element mockElement : mocks) {
 			TypeElement classElement = (TypeElement) mockElement.getEnclosingElement();
 			classElements.add(classElement);
 		}
 		classElements.addAll(getClassElements());
-		Map<String, Set<TypeElement>> superClasses = new HashMap<>();
+		Map<String, Set<TypeElement>> superClasses = new HashMap<String,Set<TypeElement>>();
 		gatherSuperClasses(superClasses, classElements);
 		return superClasses;
 	}
@@ -153,7 +153,7 @@ public class ElementModel {
 				}
 				Set<TypeElement> classElements = superClasses.get(strSuperClass);
 				if (classElements == null) {
-					classElements = new HashSet<>();
+					classElements = new HashSet<TypeElement>();
 					superClasses.put(strSuperClass, classElements);
 				}
 				classElements.add(classElement);
